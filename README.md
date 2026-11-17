@@ -35,7 +35,8 @@ npm run backend:dev
 npm run dev
 ```
 
-Acesse `http://localhost:5173/`. O Vite encaminha `/api` para a API local na porta 3001; a API encaminha apenas pedidos de chat ao Ollama. Para usar outro modelo ou host, altere `OLLAMA_MODEL` ou `OLLAMA_BASE_URL` em `backend/.env`. Essas variáveis são lidas somente pelo backend, nunca pelo bundle do navegador.
+
+O Vite encaminha `/api` para a API local na porta 3001; a API encaminha apenas pedidos de chat ao Ollama. Para usar outro modelo ou host, altere `OLLAMA_MODEL` ou `OLLAMA_BASE_URL` em `backend/.env`. Essas variáveis são lidas somente pelo backend, nunca pelo bundle do navegador.
 
 O chat usa `llama3.2:3b` por padrão. Se o Ollama ou o modelo estiverem indisponíveis, o Mindly apresenta um erro e mantém a conversa salva no navegador.
 
