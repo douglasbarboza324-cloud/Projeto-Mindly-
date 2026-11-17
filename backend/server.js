@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 
 function loadBackendEnv() {
   try {
@@ -29,6 +30,8 @@ const MAX_TOTAL_CHARS = 30_000;
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
 const MAX_CONCURRENT_REQUESTS = 3;
+const FEEDBACK_DIR = new URL("./data/", import.meta.url);
+const FEEDBACK_FILE = new URL("./data/feedback.json", import.meta.url);
 let activeRequests = 0;
 const TRUST_PROXY = process.env.TRUST_PROXY === "true";
 const rateLimits = new Map();
@@ -48,6 +51,48 @@ class HttpError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+async function readFeedback() {
+  try {
+    const records = JSON.parse(await readFile(FEEDBACK_FILE, "utf8"));
+    return Array.isArray(records) ? records : [];
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function saveFeedback(records) {
+  await mkdir(FEEDBACK_DIR, { recursive: true });
+  const temporaryFile = new URL("./data/feedback.tmp", import.meta.url);
+  await writeFile(temporaryFile, JSON.stringify(records, null, 2), "utf8");
+  await rename(temporaryFile, FEEDBACK_FILE);
+}
+
+async function handleFeedback(request, response) {
+  if (request.method === "GET") {
+    sendJson(response, 200, { feedback: (await readFeedback()).slice(0, 200) });
+    return;
+  }
+  if (request.method !== "POST") {
+    response.setHeader("Allow", "GET, POST");
+    sendJson(response, 405, { error: "Método não permitido." });
+    return;
+  }
+  if (!checkRateLimit(request)) {
+    response.setHeader("Retry-After", "60");
+    sendJson(response, 429, { error: "Muitas solicitações. Aguarde um minuto e tente novamente." });
+    return;
+  }
+  const body = await readJson(request);
+  if (!Number.isInteger(body?.rating) || body.rating < 1 || body.rating > 5 || typeof body.comment !== "string" || body.comment.length > 500) {
+    throw new HttpError(400, "Informe uma nota de 1 a 5 e um comentário de até 500 caracteres.");
+  }
+  const records = await readFeedback();
+  const entry = { id: crypto.randomUUID(), rating: body.rating, comment: body.comment.trim(), created_date: new Date().toISOString() };
+  await saveFeedback([entry, ...records].slice(0, 1000));
+  sendJson(response, 201, { feedback: entry });
 }
 
 function setSecurityHeaders(response) {
@@ -238,6 +283,20 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === "GET" && request.url === "/api/health") {
     sendJson(response, 200, { status: "ok" });
+    return;
+  }
+  if (request.url === "/api/feedback") {
+    if (request.method !== "GET" && !request.headers["content-type"]?.toLowerCase().startsWith("application/json")) {
+      sendJson(response, 415, { error: "Envie o conteúdo como application/json." });
+      return;
+    }
+    try {
+      await handleFeedback(request, response);
+    } catch (error) {
+      sendJson(response, error instanceof HttpError ? error.status : 500, {
+        error: error instanceof HttpError ? error.message : "Não foi possível processar o feedback.",
+      });
+    }
     return;
   }
   if (request.method !== "POST" || request.url !== "/api/chat") {

@@ -11,6 +11,8 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [ttsSupported, setTtsSupported] = useState(false);
   const [voiceError, setVoiceError] = useState("");
+  const [voices, setVoices] = useState([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState(() => window.localStorage.getItem("mindly:chat-voice") || "");
   const recognitionRef = useRef(null);
   const transcriptRef = useRef("");
   const onTranscriptRef = useRef(onTranscript);
@@ -52,11 +54,24 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
     }
     if ("speechSynthesis" in window) {
       setTtsSupported(true);
+      const refreshVoices = () => setVoices(window.speechSynthesis.getVoices().filter((voice) => voice.lang?.toLowerCase().startsWith("pt")));
+      refreshVoices();
+      window.speechSynthesis.addEventListener("voiceschanged", refreshVoices);
+      return () => {
+        window.speechSynthesis.removeEventListener("voiceschanged", refreshVoices);
+        try { recognitionRef.current?.abort(); } catch {}
+        try { window.speechSynthesis?.cancel(); } catch {}
+      };
     }
     return () => {
       try { recognitionRef.current?.abort(); } catch {}
       try { window.speechSynthesis?.cancel(); } catch {}
     };
+  }, []);
+
+  const selectVoice = useCallback((voiceName) => {
+    setSelectedVoiceName(voiceName);
+    window.localStorage.setItem("mindly:chat-voice", voiceName);
   }, []);
 
   const startListening = useCallback(() => {
@@ -87,15 +102,30 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
       utter.lang = lang;
       utter.rate = 1;
       utter.pitch = 1;
-      const voices = window.speechSynthesis.getVoices();
-      const ptVoice = voices.find((v) => v.lang?.startsWith("pt"));
-      if (ptVoice) utter.voice = ptVoice;
+      const availableVoices = window.speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().startsWith("pt"));
+      const preferredVoice = availableVoices.find((v) => v.name === selectedVoiceName)
+        || availableVoices.find((v) => /natural|neural|online|enhanced/i.test(v.name))
+        || availableVoices.find((v) => v.lang?.toLowerCase().startsWith("pt-br"))
+        || availableVoices[0];
+      if (preferredVoice) utter.voice = preferredVoice;
       utter.onstart = () => setIsSpeaking(true);
       utter.onend = () => setIsSpeaking(false);
       utter.onerror = () => setIsSpeaking(false);
       window.speechSynthesis.speak(utter);
     } catch {}
-  }, [lang, ttsSupported]);
+  }, [lang, selectedVoiceName, ttsSupported]);
+
+  const previewVoice = useCallback((voiceName) => {
+    selectVoice(voiceName);
+    const voice = window.speechSynthesis.getVoices().find((item) => item.name === voiceName);
+    if (!voice) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance("Olá! Esta é a voz que vou usar para conversar com você.");
+    utterance.lang = voice.lang || lang;
+    utterance.voice = voice;
+    utterance.rate = 0.96;
+    window.speechSynthesis.speak(utterance);
+  }, [lang, selectVoice]);
 
   const stopSpeaking = useCallback(() => {
     try { window.speechSynthesis?.cancel(); } catch {}
@@ -108,6 +138,10 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
     voiceSupported,
     ttsSupported,
     voiceError,
+    voices,
+    selectedVoiceName,
+    selectVoice,
+    previewVoice,
     startListening,
     stopListening,
     speak,

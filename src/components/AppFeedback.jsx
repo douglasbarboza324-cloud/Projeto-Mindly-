@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { localData } from "@/api/localData";
 import { toast } from "@/components/ui/use-toast";
 
 const ratings = [
@@ -12,28 +11,45 @@ const ratings = [
   { value: 5, emoji: "😍", label: "Excelente" },
 ];
 
+async function loadFeedback() {
+  const response = await fetch("/api/feedback");
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Não foi possível carregar o feedback.");
+  return result.feedback;
+}
+
 export default function AppFeedback() {
   const [rating, setRating] = useState(null);
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
+  const [feedback, setFeedback] = useState([]);
 
-  const handleSubmit = (event) => {
+  useEffect(() => {
+    loadFeedback().then(setFeedback).catch((error) => {
+      toast({ title: "Feedback indisponível", description: error.message, variant: "destructive" });
+    });
+  }, []);
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!rating || saving) return;
 
     setSaving(true);
     try {
-      localData.feedback.create({ rating, comment: comment.trim() });
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating, comment: comment.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Não foi possível salvar o feedback.");
+      setFeedback((current) => [result.feedback, ...current].slice(0, 200));
       setRating(null);
       setComment("");
-      setStatus("Obrigado! Seu feedback foi salvo neste navegador.");
+      setStatus("Obrigado! Seu feedback foi publicado para todos.");
     } catch (error) {
-      toast({
-        title: "Não foi possível salvar o feedback",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Não foi possível salvar o feedback", description: error.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -51,21 +67,9 @@ export default function AppFeedback() {
           <legend className="mb-2 text-sm font-medium">Escolha uma reação</legend>
           <div className="grid grid-cols-5 gap-1 sm:gap-2">
             {ratings.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                aria-label={`${option.label}, nota ${option.value} de 5`}
-                aria-pressed={rating === option.value}
-                onClick={() => {
-                  setRating(option.value);
-                  setStatus("");
-                }}
-                className={`flex min-h-11 min-w-0 items-center justify-center rounded-xl border-2 text-2xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                  rating === option.value
-                    ? "border-primary bg-primary/10"
-                    : "border-transparent bg-muted/50 hover:bg-muted"
-                }`}
-              >
+              <button key={option.value} type="button" aria-label={`${option.label}, nota ${option.value} de 5`}
+                aria-pressed={rating === option.value} onClick={() => { setRating(option.value); setStatus(""); }}
+                className={`flex min-h-11 min-w-0 items-center justify-center rounded-xl border-2 text-2xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${rating === option.value ? "border-primary bg-primary/10" : "border-transparent bg-muted/50 hover:bg-muted"}`}>
                 <span aria-hidden="true">{option.emoji}</span>
               </button>
             ))}
@@ -73,37 +77,38 @@ export default function AppFeedback() {
         </fieldset>
 
         <div className="space-y-2">
-          <label htmlFor="app-feedback-comment" className="text-sm font-medium">
-            Quer contar mais? (opcional)
-          </label>
-          <textarea
-            id="app-feedback-comment"
-            value={comment}
-            onChange={(event) => {
-              setComment(event.target.value);
-              setStatus("");
-            }}
-            maxLength={500}
-            rows={3}
-            placeholder="Escreva uma sugestão ou conte o que funcionou bem..."
-            className="w-full resize-y rounded-xl border border-input bg-background px-3 py-2 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <label htmlFor="app-feedback-comment" className="text-sm font-medium">Quer contar mais? (opcional)</label>
+          <textarea id="app-feedback-comment" value={comment} onChange={(event) => { setComment(event.target.value); setStatus(""); }}
+            maxLength={500} rows={3} placeholder="Escreva uma sugestão ou conte o que funcionou bem..."
+            className="w-full resize-y rounded-xl border border-input bg-background px-3 py-2 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           <p className="text-right text-xs text-muted-foreground">{comment.length}/500</p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-muted-foreground">
-            O feedback fica salvo somente neste navegador; não é enviado à equipe.
-          </p>
+          <p className="text-xs text-muted-foreground">O feedback e o comentário serão publicados e visíveis para todas as pessoas.</p>
           <Button type="submit" disabled={!rating || saving} className="min-h-11 shrink-0 rounded-xl">
-            <Send className="h-4 w-4" />
-            {saving ? "Salvando..." : "Enviar feedback"}
+            <Send className="h-4 w-4" />{saving ? "Salvando..." : "Enviar feedback"}
           </Button>
         </div>
-        <p role="status" aria-live="polite" aria-atomic="true" className="text-sm text-emerald-700 dark:text-emerald-300">
-          {status}
-        </p>
+        <p role="status" aria-live="polite" aria-atomic="true" className="text-sm text-emerald-700 dark:text-emerald-300">{status}</p>
       </form>
+
+      <div className="mt-6 border-t border-border pt-5">
+        <h3 className="font-semibold">Feedback da comunidade <span className="text-sm font-normal text-muted-foreground">({feedback.length})</span></h3>
+        {feedback.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Ainda não há feedback publicado.</p> : (
+          <ul className="mt-3 max-h-80 space-y-3 overflow-y-auto">
+            {feedback.map((item) => (
+              <li key={item.id} className="rounded-xl bg-muted/50 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span aria-label={`Nota ${item.rating} de 5`}>{"★".repeat(item.rating)}<span className="text-muted-foreground">{"☆".repeat(5 - item.rating)}</span></span>
+                  <time className="text-xs text-muted-foreground" dateTime={item.created_date}>{new Date(item.created_date).toLocaleDateString("pt-BR")}</time>
+                </div>
+                {item.comment && <p className="mt-2 whitespace-pre-wrap text-sm">{item.comment}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }

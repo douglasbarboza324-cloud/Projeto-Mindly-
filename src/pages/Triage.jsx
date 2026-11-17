@@ -66,7 +66,7 @@ export default function Triage() {
   const sendingRef = useRef(false);
   const abortRef = useRef(null);
 
-  const { isListening, isSpeaking, voiceSupported, ttsSupported, voiceError, startListening, stopListening, speak, stopSpeaking } = useVoiceChat({
+  const { isListening, isSpeaking, voiceSupported, ttsSupported, voiceError, voices, selectedVoiceName, previewVoice, startListening, stopListening, speak, stopSpeaking } = useVoiceChat({
     onTranscript: (text) => {
       setInput(text);
       handleSendVoice(text);
@@ -611,17 +611,32 @@ export default function Triage() {
 
             <div className="w-full max-w-sm flex flex-col gap-3 pb-4">
               {ttsSupported && (
-                <Button
-                  variant={autoSpeak ? "default" : "outline"}
-                  className="w-full h-11 rounded-2xl"
-                  onClick={() => {
-                    if (autoSpeak) { stopSpeaking(); setAutoSpeak(false); }
-                    else setAutoSpeak(true);
-                  }}
-                >
-                  {autoSpeak ? <Volume2 className="w-5 h-5 mr-2" /> : <VolumeX className="w-5 h-5 mr-2" />}
-                  {autoSpeak ? "Voz ativada" : "Ativar voz automática"}
-                </Button>
+                <>
+                  <Button
+                    variant={autoSpeak ? "default" : "outline"}
+                    className="w-full h-11 rounded-2xl"
+                    onClick={() => {
+                      if (autoSpeak) { stopSpeaking(); setAutoSpeak(false); }
+                      else setAutoSpeak(true);
+                    }}
+                  >
+                    {autoSpeak ? <Volume2 className="w-5 h-5 mr-2" /> : <VolumeX className="w-5 h-5 mr-2" />}
+                    {autoSpeak ? "Voz ativada" : "Ativar voz automática"}
+                  </Button>
+                  {voices.length > 0 ? (
+                    <div className="space-y-2">
+                      <label htmlFor="chat-voice-select" className="text-sm font-medium">Voz do chat</label>
+                      <select id="chat-voice-select" value={selectedVoiceName} onChange={(event) => previewVoice(event.target.value)}
+                        className="w-full h-11 rounded-xl border border-input bg-background px-3 text-sm">
+                        <option value="">Automática (voz mais natural disponível)</option>
+                        {voices.map((voice) => <option key={`${voice.name}-${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}{voice.localService ? " · dispositivo" : " · online"}</option>)}
+                      </select>
+                      <p className="text-xs text-muted-foreground">As vozes disponíveis variam conforme o navegador e as vozes instaladas no dispositivo.</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Nenhuma voz em português foi encontrada neste navegador. Instale uma voz em português nas configurações do dispositivo.</p>
+                  )}
+                </>
               )}
               <Button
                 onClick={isListening ? stopListening : startListening}

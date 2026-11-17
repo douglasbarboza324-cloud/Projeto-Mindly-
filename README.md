@@ -49,7 +49,7 @@ O chat usa `llama3.2:3b` por padrão. Se o Ollama ou o modelo estiverem indispon
 5. Se frontend e API tiverem origens diferentes, defina `CORS_ORIGIN` com a origem pública exata do frontend. Para o mesmo domínio, preserve o cabeçalho `Host` no proxy reverso.
 6. Se o gateway remover e recriar `X-Forwarded-For`, configure `TRUST_PROXY=true` no backend para rate limit por IP real. Antes de expor a API à internet, proteja `/api/chat` com autenticação ou controle de acesso e rate limit no gateway da hospedagem. A API também valida tamanho e formato das mensagens, timeout e origem, e aplica um rate limit em memória por IP. CORS não é autenticação e o rate limit em memória deve ser complementado na hospedagem.
 
-A API não grava nem registra o conteúdo das mensagens. Em uma publicação hospedada, o texto enviado ao chat passa pelo backend hospedado e pelo Ollama configurado por você. Não há sincronização de diário, tarefas ou conversas entre navegadores.
+A API não grava nem registra o conteúdo das mensagens. Em uma publicação hospedada, o texto enviado ao chat passa pelo backend hospedado e pelo Ollama configurado por você. Não há sincronização de diário, tarefas ou conversas entre navegadores. O feedback enviado no app fica em `backend/data/feedback.json` e aparece para todos os visitantes; use armazenamento persistente no host do backend para preservá-lo entre reinicializações e publicações. Comentários são públicos, portanto não inclua dados pessoais.
 
 ## Privacidade e dados locais
 
