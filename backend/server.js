@@ -1,6 +1,5 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 
 function loadBackendEnv() {
   try {
@@ -22,6 +21,10 @@ const PORT = Number(process.env.PORT || 3001);
 const HOST = process.env.HOST || "127.0.0.1";
 const MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const OLLAMA_BASE_URL = new URL(process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434");
+const AI_API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY;
+const AI_BASE_URL = process.env.AI_BASE_URL || "https://api.openai.com/v1";
+const AI_MODEL = process.env.AI_MODEL || "gpt-4o-mini";
+const AI_ENDPOINT = new URL(`${AI_BASE_URL.replace(/\/+$/, "")}/chat/completions`);
 const REQUEST_TIMEOUT_MS = 120_000;
 const MAX_BODY_BYTES = 200 * 1024;
 const MAX_MESSAGES = 40;
@@ -30,8 +33,6 @@ const MAX_TOTAL_CHARS = 30_000;
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
 const MAX_CONCURRENT_REQUESTS = 3;
-const FEEDBACK_DIR = new URL("./data/", import.meta.url);
-const FEEDBACK_FILE = new URL("./data/feedback.json", import.meta.url);
 let activeRequests = 0;
 const TRUST_PROXY = process.env.TRUST_PROXY === "true";
 const rateLimits = new Map();
@@ -45,54 +46,15 @@ const allowedOrigins = new Set(
 if (!OLLAMA_BASE_URL.hostname || !["http:", "https:"].includes(OLLAMA_BASE_URL.protocol) || OLLAMA_BASE_URL.username || OLLAMA_BASE_URL.password) {
   throw new Error("OLLAMA_BASE_URL must be an HTTP(S) URL without credentials.");
 }
+if (!AI_ENDPOINT.hostname || AI_ENDPOINT.protocol !== "https:" || AI_ENDPOINT.username || AI_ENDPOINT.password) {
+  throw new Error("AI_BASE_URL must be an HTTPS URL without credentials.");
+}
 
 class HttpError extends Error {
   constructor(status, message) {
     super(message);
     this.status = status;
   }
-}
-
-async function readFeedback() {
-  try {
-    const records = JSON.parse(await readFile(FEEDBACK_FILE, "utf8"));
-    return Array.isArray(records) ? records : [];
-  } catch (error) {
-    if (error.code === "ENOENT") return [];
-    throw error;
-  }
-}
-
-async function saveFeedback(records) {
-  await mkdir(FEEDBACK_DIR, { recursive: true });
-  const temporaryFile = new URL("./data/feedback.tmp", import.meta.url);
-  await writeFile(temporaryFile, JSON.stringify(records, null, 2), "utf8");
-  await rename(temporaryFile, FEEDBACK_FILE);
-}
-
-async function handleFeedback(request, response) {
-  if (request.method === "GET") {
-    sendJson(response, 200, { feedback: (await readFeedback()).slice(0, 200) });
-    return;
-  }
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "GET, POST");
-    sendJson(response, 405, { error: "Método não permitido." });
-    return;
-  }
-  if (!checkRateLimit(request)) {
-    response.setHeader("Retry-After", "60");
-    sendJson(response, 429, { error: "Muitas solicitações. Aguarde um minuto e tente novamente." });
-    return;
-  }
-  const body = await readJson(request);
-  if (!Number.isInteger(body?.rating) || body.rating < 1 || body.rating > 5 || typeof body.comment !== "string" || body.comment.length > 500) {
-    throw new HttpError(400, "Informe uma nota de 1 a 5 e um comentário de até 500 caracteres.");
-  }
-  const records = await readFeedback();
-  const entry = { id: crypto.randomUUID(), rating: body.rating, comment: body.comment.trim(), created_date: new Date().toISOString() };
-  await saveFeedback([entry, ...records].slice(0, 1000));
-  sendJson(response, 201, { feedback: entry });
 }
 
 function setSecurityHeaders(response) {
@@ -231,38 +193,36 @@ async function handleChat(request, response) {
   });
 
   try {
-    const ollamaResponse = await fetch(new URL("/api/chat", OLLAMA_BASE_URL), {
+    const remote = Boolean(AI_API_KEY);
+    const ollamaResponse = await fetch(remote ? AI_ENDPOINT : new URL("/api/chat", OLLAMA_BASE_URL), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(remote ? { Authorization: `Bearer ${AI_API_KEY}` } : {}) },
       signal: controller.signal,
-      body: JSON.stringify({
-        model: MODEL,
-        messages,
-        stream: false,
-        options: { num_predict: 1024 },
-        ...(format ? { format } : {}),
+      body: JSON.stringify(remote ? { model: AI_MODEL, messages, stream: false, max_tokens: 1024, ...(format ? { response_format: { type: "json_object" } } : {}) } : {
+        model: MODEL, messages, stream: false, options: { num_predict: 1024 }, ...(format ? { format } : {}),
       }),
     });
 
     if (!ollamaResponse.ok) {
-      sendJson(response, 503, { error: "O modelo local está indisponível. Verifique o Ollama e o modelo configurado." });
+      sendJson(response, 503, { error: "O provedor de IA está indisponível. Tente novamente em instantes." });
       return;
     }
 
     const result = await ollamaResponse.json();
-    if (typeof result.message?.content !== "string" || !result.message.content.trim()) {
-      sendJson(response, 502, { error: "O modelo local retornou uma resposta vazia ou inválida." });
+    const content = remote ? result.choices?.[0]?.message?.content : result.message?.content;
+    if (typeof content !== "string" || !content.trim()) {
+      sendJson(response, 502, { error: "O provedor de IA retornou uma resposta vazia ou inválida." });
       return;
     }
-    sendJson(response, 200, { message: { content: result.message.content } });
+    sendJson(response, 200, { message: { content } });
   } catch (error) {
     if (response.writableEnded) return;
     if (timedOut) {
-      sendJson(response, 504, { error: "O modelo demorou demais para responder. Tente novamente." });
+      sendJson(response, 504, { error: "O provedor de IA demorou demais para responder. Tente novamente." });
       return;
     }
     if (error.name === "AbortError") return;
-    sendJson(response, 503, { error: "Não foi possível conectar ao Ollama. Verifique a configuração do serviço." });
+    sendJson(response, 503, { error: "Não foi possível conectar ao provedor de IA." });
   } finally {
     clearTimeout(timeout);
     activeRequests -= 1;
@@ -285,20 +245,6 @@ const server = createServer(async (request, response) => {
     sendJson(response, 200, { status: "ok" });
     return;
   }
-  if (request.url === "/api/feedback") {
-    if (request.method !== "GET" && !request.headers["content-type"]?.toLowerCase().startsWith("application/json")) {
-      sendJson(response, 415, { error: "Envie o conteúdo como application/json." });
-      return;
-    }
-    try {
-      await handleFeedback(request, response);
-    } catch (error) {
-      sendJson(response, error instanceof HttpError ? error.status : 500, {
-        error: error instanceof HttpError ? error.message : "Não foi possível processar o feedback.",
-      });
-    }
-    return;
-  }
   if (request.method !== "POST" || request.url !== "/api/chat") {
     sendJson(response, 404, { error: "Rota não encontrada." });
     return;
@@ -318,5 +264,5 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Mindly API listening on port ${PORT} (model: ${MODEL})`);
+  console.log(`Mindly API listening on port ${PORT} (model: ${AI_API_KEY ? AI_MODEL : MODEL})`);
 });

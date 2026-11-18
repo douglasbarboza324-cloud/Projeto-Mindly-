@@ -44,7 +44,7 @@ export default function ConsentModal({ open, onConsent }) {
           <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
             <div className="flex gap-3 p-3 bg-muted/50 rounded-lg">
               <Lock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-              <p>Diário, humor, tarefas, consentimentos e áudios ficam neste navegador e não são sincronizados. Quando você usa IA, o texto enviado é processado pela API do Mindly e pela instância Ollama configurada. A transcrição de áudio pode depender do navegador.</p>
+              <p>Diário, humor, tarefas, consentimentos e áudios ficam neste navegador e não são sincronizados. Quando você usa IA, o texto enviado é processado pela API do Mindly e pelo provedor configurado. A transcrição de áudio pode depender do navegador.</p>
             </div>
             <div className="flex gap-3 p-3 bg-muted/50 rounded-lg">
               <Eye className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -58,7 +58,7 @@ export default function ConsentModal({ open, onConsent }) {
           <div className="space-y-3">
             <label className="flex items-start gap-3 cursor-pointer">
               <Checkbox checked={accepted} onCheckedChange={setAccepted} className="mt-0.5" />
-              <span className="text-sm">Entendi onde os dados ficam armazenados e que mensagens enviadas à IA são processadas pela API e pelo Ollama configurados. Sei que o Mindly não substitui acompanhamento profissional.</span>
+              <span className="text-sm">Entendi onde os dados ficam armazenados e que mensagens enviadas à IA são processadas pela API e pelo provedor configurado. Sei que o Mindly não substitui acompanhamento profissional.</span>
             </label>
           </div>
 

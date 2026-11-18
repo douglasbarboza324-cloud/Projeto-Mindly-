@@ -1,61 +1,47 @@
 # Mindly
 
-Mindly é um aplicativo React 18 + Vite para registrar humor, refletir sobre si, organizar tarefas e adaptar textos. O frontend e a API ficam separados: os dados pessoais continuam no navegador e a API encaminha pedidos de IA ao Ollama configurado no servidor.
+Mindly is a React 18 + Vite application. Diary entries, tasks and recordings remain in the browser. Accounts and emoji reactions use Supabase. Chat uses an OpenAI-compatible hosted provider in production; local development can use the same provider or the existing Ollama backend.
 
-## Requisitos
+## Setup
 
-- Node.js 20 ou mais recente
-- npm
-- Ollama e o modelo `llama3.2:3b` para usar recursos de IA
-
-## Desenvolvimento local
+Requirements: Node.js 20+ and npm.
 
 ```bash
 npm install
-```
-
-Inicie o Ollama e baixe o modelo:
-
-```bash
-ollama pull llama3.2:3b
-ollama serve
-```
-
-Copie `backend/.env.example` para `backend/.env`. Abra dois terminais na pasta do projeto:
-
-```bash
+cp .env.example .env
 cp backend/.env.example backend/.env
 ```
 
-```bash
-npm run backend:dev
-```
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`. The publishable/anon key is intended for browser use; database access is restricted with RLS. Never put a service-role key in frontend variables.
+
+Apply `supabase/migrations/202611180001_profiles_and_reactions.sql` in the Supabase SQL editor. In Supabase Auth settings, enable email confirmations, Google and Facebook OAuth, and an SMS provider. Add the local and production app redirects (including `/#/` and `/#/reset-password`) to Supabase's redirect allow list. In Google and Facebook developer settings, register Supabase's callback URL, `https://<project-ref>.supabase.co/auth/v1/callback`; then enter the Google OAuth Client ID/Secret and Facebook App ID/Secret in the matching Supabase provider settings. Facebook needs `public_profile` and `email` permissions. Configure SMS provider credentials under Supabase Auth > Phone. Provider callbacks and app redirects are separate settings.
+
+For chat, configure a hosted OpenAI-compatible API. To use it locally, add `AI_API_KEY`, `AI_BASE_URL` (defaults to `https://api.openai.com/v1`) and `AI_MODEL` (defaults to `gpt-4o-mini`) to `backend/.env`, then run:
 
 ```bash
+npm run backend:dev
 npm run dev
 ```
 
+If no hosted key is set in `backend/.env`, the local backend uses Ollama at `OLLAMA_BASE_URL` (default `http://127.0.0.1:11434`) and `OLLAMA_MODEL` (default `llama3.2:3b`). Ollama is only a local development option. The Vercel function never calls localhost.
 
-O Vite encaminha `/api` para a API local na porta 3001; a API encaminha apenas pedidos de chat ao Ollama. Para usar outro modelo ou host, altere `OLLAMA_MODEL` ou `OLLAMA_BASE_URL` em `backend/.env`. Essas variáveis são lidas somente pelo backend, nunca pelo bundle do navegador.
+## Vercel deployment
 
-O chat usa `llama3.2:3b` por padrão. Se o Ollama ou o modelo estiverem indisponíveis, o Mindly apresenta um erro e mantém a conversa salva no navegador.
+Import the GitHub repository into Vercel. `vercel.json` builds Vite to `dist` and maps `/api/chat` and `/api/health` to their serverless handlers. Set these project environment variables for Production and Preview as needed:
 
-## Publicação com backend
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `AI_API_KEY` (required for chat)
+- `AI_BASE_URL` (optional; OpenAI-compatible HTTPS base URL)
+- `AI_MODEL` (optional; defaults to `gpt-4o-mini`)
 
-1. Execute `npm run build` e publique os arquivos de `dist/` em um host de frontend.
-2. Execute `npm run backend` em um host Node.js 20+, com `HOST=0.0.0.0` para aceitar conexões do proxy da hospedagem.
-3. Configure o proxy reverso da hospedagem para encaminhar `/api/*` ao processo Node. O frontend usa caminhos relativos e não precisa receber o endereço do Ollama.
-4. Configure `OLLAMA_BASE_URL` e `OLLAMA_MODEL` no ambiente do backend. O processo backend precisa alcançar o servidor Ollama e ter o modelo instalado.
-5. Se frontend e API tiverem origens diferentes, defina `CORS_ORIGIN` com a origem pública exata do frontend. Para o mesmo domínio, preserve o cabeçalho `Host` no proxy reverso.
-6. Se o gateway remover e recriar `X-Forwarded-For`, configure `TRUST_PROXY=true` no backend para rate limit por IP real. Antes de expor a API à internet, proteja `/api/chat` com autenticação ou controle de acesso e rate limit no gateway da hospedagem. A API também valida tamanho e formato das mensagens, timeout e origem, e aplica um rate limit em memória por IP. CORS não é autenticação e o rate limit em memória deve ser complementado na hospedagem.
+Also allow the deployed domain in Supabase Auth's site URL, redirect URL allow list and OAuth provider configuration. The Vercel function returns a clear setup error until `AI_API_KEY` is set. Chat requests are sent to the hosted provider from the server function; the key is never exposed to the browser.
 
-A API não grava nem registra o conteúdo das mensagens. Em uma publicação hospedada, o texto enviado ao chat passa pelo backend hospedado e pelo Ollama configurado por você. Não há sincronização de diário, tarefas ou conversas entre navegadores. O feedback enviado no app fica em `backend/data/feedback.json` e aparece para todos os visitantes; use armazenamento persistente no host do backend para preservá-lo entre reinicializações e publicações. Comentários são públicos, portanto não inclua dados pessoais.
+## Privacy and data
 
-## Privacidade e dados locais
+Supabase Auth manages accounts and sessions. A database trigger maintains the profile row. The `reactions` table has a unique `(user_id, content_id)` constraint and row-level policies so users can only read or modify their own reaction. Diary entries, tasks and audio stay in the current browser and do not sync between devices; local records and audio storage are scoped to the authenticated user on that browser. Chat messages are sent to the configured AI provider for processing.
 
-O Mindly armazena dados estruturados no `localStorage` e áudios gravados no IndexedDB do navegador atual. Os dados podem ser removidos na página Configurações. O reconhecimento de fala do navegador pode processar áudio conforme a política desse navegador. Em produção, mensagens do chat são encaminhadas ao Ollama pela API do servidor.
-
-## Verificações
+## Validation
 
 ```bash
 npm run lint

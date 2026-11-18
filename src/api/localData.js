@@ -1,21 +1,58 @@
-import { clearAllAudio } from "@/api/localFiles";
+import { clearAllAudio, setAudioOwner } from "@/api/localFiles";
 
 const STORAGE_PREFIX = "mindly:";
+const LEGACY_AUDIO_OWNER_KEY = `${STORAGE_PREFIX}legacy-audio-owner:v1`;
 const COLLECTIONS = {
   moods: `${STORAGE_PREFIX}moods:v1`,
   tasks: `${STORAGE_PREFIX}tasks:v1`,
   triageSessions: `${STORAGE_PREFIX}triage-sessions:v1`,
   consents: `${STORAGE_PREFIX}consents:v1`,
-  feedback: `${STORAGE_PREFIX}feedback:v1`,
 };
+let activeOwnerId = null;
+
+function scopedCollectionKey(collection) {
+  const key = COLLECTIONS[collection];
+  if (!key) throw new Error(`Unknown local collection: ${collection}`);
+  return activeOwnerId ? `${STORAGE_PREFIX}user:${activeOwnerId}:${key.slice(STORAGE_PREFIX.length)}` : key;
+}
+
+export function setLocalDataOwner(userId) {
+  activeOwnerId = userId || null;
+  if (!activeOwnerId) { setAudioOwner(null); return; }
+
+  for (const [collection, legacyKey] of Object.entries(COLLECTIONS)) {
+    const scopedKey = scopedCollectionKey(collection);
+    const legacyData = window.localStorage.getItem(legacyKey);
+    if (legacyData !== null) {
+      if (!window.localStorage.getItem(LEGACY_AUDIO_OWNER_KEY)) {
+        window.localStorage.setItem(LEGACY_AUDIO_OWNER_KEY, activeOwnerId);
+      }
+      const scopedData = window.localStorage.getItem(scopedKey);
+      try {
+        const legacyRecords = JSON.parse(legacyData);
+        const scopedRecords = scopedData ? JSON.parse(scopedData) : [];
+        if (Array.isArray(legacyRecords) && Array.isArray(scopedRecords)) {
+          const recordsById = new Map(legacyRecords.map((record) => [record.id, { ...record, user_id: activeOwnerId }]));
+          for (const record of scopedRecords) recordsById.set(record.id, { ...record, user_id: activeOwnerId });
+          window.localStorage.setItem(scopedKey, JSON.stringify([...recordsById.values()]));
+        } else if (!scopedData) {
+          window.localStorage.setItem(scopedKey, legacyData);
+        }
+      } catch {
+        if (!scopedData) window.localStorage.setItem(scopedKey, legacyData);
+      }
+      window.localStorage.removeItem(legacyKey);
+    }
+  }
+  setAudioOwner(activeOwnerId, window.localStorage.getItem(LEGACY_AUDIO_OWNER_KEY) === activeOwnerId);
+}
 
 function createId() {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function readCollection(collection) {
-  const key = COLLECTIONS[collection];
-  if (!key) throw new Error(`Unknown local collection: ${collection}`);
+  const key = scopedCollectionKey(collection);
 
   const stored = window.localStorage.getItem(key);
   if (!stored) return [];
@@ -28,8 +65,7 @@ function readCollection(collection) {
 }
 
 function writeCollection(collection, records) {
-  const key = COLLECTIONS[collection];
-  if (!key) throw new Error(`Unknown local collection: ${collection}`);
+  const key = scopedCollectionKey(collection);
   window.localStorage.setItem(key, JSON.stringify(records));
 }
 
@@ -48,6 +84,7 @@ function create(collection, values) {
   const now = new Date().toISOString();
   const record = {
     ...values,
+    ...(activeOwnerId ? { user_id: activeOwnerId } : {}),
     id: createId(),
     created_date: values.created_date || now,
     updated_date: now,
@@ -101,11 +138,13 @@ export const localData = {
     list: () => list("consents"),
     create: (values) => create("consents", values),
   },
-  feedback: {
-    create: (values) => create("feedback", values),
-  },
   async clearAll() {
     for (const collection of Object.keys(COLLECTIONS)) clearCollection(collection);
-    await clearAllAudio();
+    window.localStorage.removeItem(`${STORAGE_PREFIX}feedback:v1`);
+    window.localStorage.removeItem(`${STORAGE_PREFIX}profile:v1`);
+    window.localStorage.removeItem(`${STORAGE_PREFIX}accounts:v1`);
+    const ownsLegacyAudio = !activeOwnerId || window.localStorage.getItem(LEGACY_AUDIO_OWNER_KEY) === activeOwnerId;
+    await clearAllAudio({ includeLegacy: Boolean(ownsLegacyAudio) });
+    if (activeOwnerId && ownsLegacyAudio) window.localStorage.removeItem(LEGACY_AUDIO_OWNER_KEY);
   },
 };

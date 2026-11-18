@@ -52,7 +52,7 @@ export default function Accessibility() {
       });
       setResult(response);
     } catch (error) {
-      toast({ title: "IA local indisponível", description: error.message, variant: "destructive" });
+      toast({ title: "Provedor de IA indisponível", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -170,7 +170,7 @@ export default function Accessibility() {
       )}
 
       <p className="text-xs text-center text-muted-foreground">
-        Esta ferramenta envia o texto à API configurada, que o encaminha ao Ollama. Revise o conteúdo gerado; ele não substitui a avaliação profissional.
+        Esta ferramenta envia o texto ao provedor de IA configurado. Revise o conteúdo gerado; ele não substitui a avaliação profissional.
       </p>
     </div>
   );

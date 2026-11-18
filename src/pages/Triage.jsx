@@ -88,7 +88,7 @@ export default function Triage() {
     setLoading(false);
     const welcome = {
       role: "assistant",
-      content: "Olá! 💚 Sou o assistente do Mindly. Estou aqui para te ouvir. Como você está se sentindo hoje? Esta conversa fica salva neste navegador. Para respostas com IA, o texto é enviado à API e ao Ollama configurados.",
+      content: "Olá! 💚 Sou o assistente do Mindly. Estou aqui para te ouvir. Como você está se sentindo hoje? Esta conversa fica salva neste navegador. Para respostas com IA, o texto é enviado à API e ao provedor configurado.",
       timestamp: new Date().toISOString(),
     };
     setMessages([welcome]);
@@ -226,7 +226,7 @@ export default function Triage() {
       }
     } catch (error) {
       if (error.name === "AbortError") return;
-      const errMsg = { role: "assistant", content: `Não foi possível obter resposta do modelo local: ${error.message}`, timestamp: new Date().toISOString() };
+      const errMsg = { role: "assistant", content: `Não foi possível obter resposta da IA: ${error.message}`, timestamp: new Date().toISOString() };
       const updatedMessages = [...newMessages, errMsg];
       setMessages(updatedMessages);
       if (sessionId) {
@@ -283,7 +283,7 @@ export default function Triage() {
         });
       }
     } catch (error) {
-      toast({ title: "Modelo local indisponível", description: error.message, variant: "destructive" });
+      toast({ title: "Provedor de IA indisponível", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -294,7 +294,7 @@ export default function Triage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-heading font-bold">Triagem Inteligente</h2>
-          <p className="text-sm text-muted-foreground">Converse sem julgamentos. As respostas usam o Ollama configurado.</p>
+          <p className="text-sm text-muted-foreground">Converse sem julgamentos. As respostas usam o provedor de IA configurado.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -528,7 +528,7 @@ export default function Triage() {
       </div>
 
       <p className="text-xs text-center text-muted-foreground">
-        Este assistente não fornece diagnósticos. A conversa fica neste navegador; mensagens enviadas à IA são processadas pela API e pelo Ollama configurados. Em emergências, ligue 188 (CVV).
+        Este assistente não fornece diagnósticos. A conversa fica neste navegador; mensagens enviadas à IA são processadas pela API e pelo provedor configurado. Em emergências, ligue 188 (CVV).
       </p>
 
       {/* Voice mode overlay */}

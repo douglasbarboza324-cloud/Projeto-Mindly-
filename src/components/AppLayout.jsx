@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, Navigate, useLocation } from "react-router-dom";
 import { BookHeart, MessageCircleHeart, ListTodo, Home, Settings as SettingsIcon, Briefcase } from "lucide-react";
-import { localData } from "@/api/localData";
+import { localData, setLocalDataOwner } from "@/api/localData";
+import { supabase } from "@/api/profile";
 import EmergencyButton from "@/components/EmergencyButton";
 import ConsentModal from "@/components/ConsentModal";
 import MindlyLogo from "@/components/MindlyLogo";
@@ -26,8 +27,31 @@ export default function AppLayout() {
   const [needsConsent, setNeedsConsent] = useState(false);
   const [checkingConsent, setCheckingConsent] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [user, setUser] = useState(undefined);
 
   useEffect(() => {
+    if (!supabase) { setUser(null); return; }
+    supabase.auth.getSession().then(({ data }) => {
+      const nextUser = data.session?.user || null;
+      setLocalDataOwner(nextUser?.id);
+      setUser(nextUser);
+    }).catch(() => { setLocalDataOwner(null); setUser(null); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUser = session?.user || null;
+      setLocalDataOwner(nextUser?.id);
+      setUser(nextUser);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user === undefined) return;
+    if (!user) {
+      setNeedsConsent(false);
+      setCheckingConsent(false);
+      return;
+    }
+    setCheckingConsent(true);
     const checkConsent = async () => {
       try {
         const consents = await localData.consents.list();
@@ -41,13 +65,16 @@ export default function AppLayout() {
       }
     };
     checkConsent();
-  }, []);
+  }, [user?.id, user]);
 
   useEffect(() => {
     if (!checkingConsent && !needsConsent && shouldShowOnboarding()) {
       setShowOnboarding(true);
     }
   }, [checkingConsent, needsConsent]);
+
+  if (user === undefined) return <div className="fixed inset-0 flex items-center justify-center bg-background"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" /></div>;
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 
   if (checkingConsent) {
     return (

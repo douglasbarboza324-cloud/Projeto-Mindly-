@@ -16,8 +16,7 @@ export default function LocalModePage({ icon, title, subtitle }) {
         </Link>
       }
     >
-      <p className="text-sm text-muted-foreground text-center leading-relaxed">
-        O Mindly não cria contas. Seus registros ficam neste navegador; mensagens enviadas à IA são processadas pelo Ollama configurado.
+      <p className="text-sm text-muted-foreground text-center leading-relaxed">        A autenticação do Mindly é gerenciada pelo Supabase. Seus registros ficam neste navegador; mensagens enviadas à IA são processadas pelo provedor configurado.
       </p>
       <Link
         to="/"

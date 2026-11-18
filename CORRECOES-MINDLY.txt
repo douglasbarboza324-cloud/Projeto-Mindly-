@@ -1,0 +1,36 @@
+CORRECOES DO MINDLY
+
+1. Confirmacao de cadastro
+- O redirecionamento do Supabase agora aponta para a origem do site, sem colocar a rota do HashRouter dentro do redirect.
+- O app processa o retorno do Supabase antes de iniciar o HashRouter.
+- Links antigos que chegam como #/access_token=... sao normalizados antes da inicializacao do Supabase.
+- A recuperacao de senha usa mindly_redirect=reset-password para abrir a tela correta.
+
+2. Configuracao necessaria no Supabase
+- Site URL: https://projeto-mindly.vercel.app
+- Redirect URLs: https://projeto-mindly.vercel.app/** 
+- Em Authentication > Email Templates > Confirm signup, o link do botao deve usar:
+  <a href="{{ .ConfirmationURL }}">Confirmar meu e-mail</a>
+
+3. Variaveis necessarias na Vercel
+Configure em Project > Settings > Environment Variables:
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY (ou VITE_SUPABASE_PUBLISHABLE_KEY)
+- AI_API_KEY
+- AI_BASE_URL (opcional; padrao https://api.openai.com/v1)
+- AI_MODEL (opcional; padrao gpt-4o-mini)
+
+AI_API_KEY, AI_BASE_URL e AI_MODEL sao usados somente pela API do servidor. Nao coloque essas chaves em variaveis VITE_ nem em arquivos enviados ao GitHub.
+
+4. Publicacao
+Depois de copiar as alteracoes para o projeto local:
+  npm ci
+  npm run build
+  git add .
+  git commit -m "Corrige autenticacao e redirecionamento"
+  git push origin main
+
+A Vercel deve iniciar um novo deployment. Aguarde o status Ready.
+
+OBSERVACAO
+O build completo nao foi validado neste ambiente porque a instalacao das dependencias nao terminou. Os arquivos JavaScript/API verificados passaram no teste de sintaxe. Confirme o build localmente antes de publicar.

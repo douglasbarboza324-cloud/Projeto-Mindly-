@@ -1,45 +1,48 @@
-import React from "react";
-import { UserX, Database, Shield } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { UserX, Database, Shield, LogOut } from "lucide-react";
 import DeleteAccountDialog from "@/components/DeleteAccountDialog";
+import { getProfile, logout } from "@/api/profile";
+import { toast } from "@/components/ui/use-toast";
 
 export default function Settings() {
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState(null);
+  useEffect(() => { getProfile().then(setProfile).catch(() => setProfile(null)); }, []);
+
+  const handleLogout = async () => {
+    try { await logout(); navigate("/login", { replace: true }); }
+    catch (error) { toast({ title: "Não foi possível sair", description: error.message, variant: "destructive" }); }
+  };
+
   return (
     <div className="space-y-6 py-4">
       <div>
         <h2 className="text-2xl font-heading font-bold">Configurações</h2>
-        <p className="text-sm text-muted-foreground">Diário, tarefas e áudios ficam neste navegador. Mensagens enviadas à IA são processadas pelo Ollama configurado.</p>
+        <p className="text-sm text-muted-foreground">Diário, tarefas e áudios ficam neste navegador. Mensagens enviadas à IA são processadas pelo provedor configurado no servidor.</p>
       </div>
 
-      {/* Account section */}
-      <div className="bg-card border rounded-2xl p-5 space-y-3">
-        <h3 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
-          <Shield className="w-4 h-4" />
-          Armazenamento local
+      <div className="space-y-3 rounded-2xl border bg-card p-5">
+        <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Shield className="h-4 w-4" /> Armazenamento local
         </h3>
-
-        <div className="pt-2">
-          <DeleteAccountDialog>
-            <button className="flex items-center gap-3 w-full p-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors select-none">
-              <UserX className="w-5 h-5" />
-              <div className="text-left">
-                <p className="text-sm font-medium">Excluir dados locais</p>
-                <p className="text-xs text-muted-foreground">Remove registros e áudios salvos neste navegador</p>
-              </div>
-            </button>
-          </DeleteAccountDialog>
-        </div>
+        {profile && <p className="text-sm">Conectado como <strong>{profile.name || profile.phone}</strong> · {profile.email}</p>}
+        <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl p-3 text-muted-foreground transition-colors hover:bg-muted">
+          <LogOut className="h-5 w-5" /><span className="text-sm font-medium">Sair da conta</span>
+        </button>
+        <DeleteAccountDialog>
+          <button className="flex w-full items-center gap-3 rounded-xl p-3 text-destructive transition-colors hover:bg-destructive/10">
+            <UserX className="h-5 w-5" />
+            <span className="text-left"><span className="block text-sm font-medium">Excluir dados locais</span><span className="block text-xs text-muted-foreground">Remove os registros e áudios desta conta neste navegador</span></span>
+          </button>
+        </DeleteAccountDialog>
       </div>
 
-      <div className="bg-card border rounded-2xl p-5 flex items-start gap-3">
-        <Database className="w-5 h-5 text-primary mt-0.5" />
-        <p className="text-sm text-muted-foreground">
-          O aplicativo não cria contas nem sincroniza os registros. Limpar os dados do navegador também pode apagar seus registros locais.
-        </p>
+      <div className="flex items-start gap-3 rounded-2xl border bg-card p-5">
+        <Database className="mt-0.5 h-5 w-5 text-primary" />
+        <p className="text-sm text-muted-foreground">A conta é gerenciada pelo Supabase. Seus registros pessoais continuam neste navegador.</p>
       </div>
-
-      <p className="text-xs text-center text-muted-foreground max-w-md mx-auto leading-relaxed">
-        A exclusão dos dados locais é permanente. Seus registros de humor, triagens, tarefas, consentimentos e áudios serão removidos.
-      </p>
+      <p className="mx-auto max-w-md text-center text-xs leading-relaxed text-muted-foreground">A exclusão remove os registros locais desta conta e deste navegador. A conta Supabase permanece ativa.</p>
     </div>
   );
 }
