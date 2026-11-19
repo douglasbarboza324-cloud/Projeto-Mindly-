@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from "react";
 
 export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
@@ -22,10 +21,6 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
   const onTranscriptRef = useRef(onTranscript);
 
   onTranscriptRef.current = onTranscript;
-
-  // Detecta Android Chrome sem modificar o comportamento do notebook.
-  const isAndroid = typeof navigator !== "undefined" &&
-    /Android/i.test(navigator.userAgent);
 
   const refreshVoices = useCallback(() => {
     if (!("speechSynthesis" in window)) return;
@@ -81,7 +76,7 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
         } else if (event.error === "no-speech") {
           setVoiceError("Nenhuma fala foi detectada. Tente novamente.");
         } else {
-          setVoiceError("O reconhecimento de voz não está disponível agora.");
+          setVoiceError("O reconhecimento de voz n\u00e3o est\u00e1 dispon\u00edvel agora.");
         }
       };
 
@@ -137,7 +132,7 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
       setIsListening(true);
     } catch {
       setIsListening(false);
-      setVoiceError("Não foi possível iniciar o microfone. Verifique a permissão e tente novamente.");
+      setVoiceError("N\u00e3o foi poss\u00edvel iniciar o microfone. Verifique a permiss\u00e3o e tente novamente.");
     }
   }, []);
 
@@ -170,43 +165,20 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
       const availableVoices = synthesis.getVoices()
         .filter(v => v.lang?.toLowerCase().startsWith("pt"));
 
-      let preferredVoice;
+      const preferredVoice =
+        availableVoices.find(v => v.name === selectedVoiceName) ||
+        availableVoices.find(v =>
+          v.lang?.toLowerCase() === "pt-br" &&
+          /natural|neural|online|enhanced/i.test(v.name)
+        ) ||
+        availableVoices.find(v => v.lang?.toLowerCase() === "pt-br") ||
+        availableVoices.find(v => /natural|neural|online|enhanced/i.test(v.name)) ||
+        availableVoices[0];
 
-      if (isAndroid) {
-        // Android: prioriza português brasileiro.
-        preferredVoice =
-          availableVoices.find(v => v.name === selectedVoiceName) ||
-          availableVoices.find(v =>
-            v.lang?.toLowerCase() === "pt-br" &&
-            /google|natural|neural|online|enhanced/i.test(v.name)
-          ) ||
-          availableVoices.find(v =>
-            v.lang?.toLowerCase() === "pt-br"
-          ) ||
-          availableVoices.find(v =>
-            /natural|neural|online|enhanced/i.test(v.name)
-          ) ||
-          availableVoices[0];
-
-        // Ajuste exclusivo para Android.
-        utter.rate = 0.96;
-      } else {
-        // Notebook: mantém a seleção e a velocidade originais.
-        preferredVoice =
-          availableVoices.find(v => v.name === selectedVoiceName) ||
-          availableVoices.find(v =>
-            /natural|neural|online|enhanced/i.test(v.name)
-          ) ||
-          availableVoices.find(v =>
-            v.lang?.toLowerCase().startsWith("pt-br")
-          ) ||
-          availableVoices[0];
-
-        utter.rate = 1;
-      }
-
+      utter.rate = 1;
       if (preferredVoice) {
         utter.voice = preferredVoice;
+        utter.lang = preferredVoice.lang || lang;
       }
 
       utter.onstart = () => setIsSpeaking(true);
@@ -217,7 +189,7 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
     } catch {
       setIsSpeaking(false);
     }
-  }, [lang, selectedVoiceName, ttsSupported, isAndroid]);
+  }, [lang, selectedVoiceName, ttsSupported]);
 
   const previewVoice = useCallback((voiceName) => {
     selectVoice(voiceName);
@@ -231,15 +203,15 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(
-      "Olá! Esta é a voz que vou usar para conversar com você."
+      "Ol\u00e1! Esta \u00e9 a voz que vou usar para conversar com voc\u00ea."
     );
 
     utterance.lang = voice.lang || lang;
     utterance.voice = voice;
-    utterance.rate = isAndroid ? 0.96 : 0.96;
+    utterance.rate = 1;
 
     window.speechSynthesis.speak(utterance);
-  }, [lang, selectVoice, isAndroid]);
+  }, [lang, selectVoice]);
 
   const stopSpeaking = useCallback(() => {
     try {
