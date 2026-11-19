@@ -4,7 +4,7 @@ Este pacote contém somente os arquivos alterados e a nova migração de feedbac
 
 ## O que foi alterado
 
-- Campo de senha com botão acessível para mostrar/ocultar no login e no cadastro.
+- Campo de senha com botão acessível para mostrar/ocultar no login e na redefinição.
 - Campo de e-mail com validação nativa, limite de tamanho e prevenção de capitalização automática.
 - Área inicial convertida em formulário de avaliação do aplicativo, com nota, comentário opcional e confirmação.
 - Exclusão de uma conversa ou de todo o histórico local, sempre com confirmação.
@@ -26,7 +26,7 @@ A tabela usa Row Level Security: cada usuário autenticado só pode enviar e con
 
 ## 3. Autenticação
 
-O aplicativo oferece cadastro, login e recuperação de senha por e-mail com o Supabase Auth. Para exigir a verificação do endereço antes do login, ative **Authentication → Sign In / Providers → Email → Confirm email** no painel do Supabase.
+O Mindly permite entrar apenas com o nome usando usuários anônimos do Supabase e mantém o login por e-mail para contas existentes. Ative **Authentication → Sign In / Providers → Allow anonymous sign-ins** no painel do Supabase. O acesso por nome fica vinculado ao dispositivo e não pode ser recuperado depois de sair ou limpar os dados do navegador; considere ativar CAPTCHA para proteger a criação de usuários anônimos.
 
 ## 4. Testar e publicar
 

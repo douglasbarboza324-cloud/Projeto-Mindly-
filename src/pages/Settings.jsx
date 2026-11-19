@@ -11,6 +11,7 @@ export default function Settings() {
   useEffect(() => { getProfile().then(setProfile).catch(() => setProfile(null)); }, []);
 
   const handleLogout = async () => {
+    if (profile?.isAnonymous && !window.confirm("Este acesso é somente neste dispositivo. Ao sair, você não poderá recuperá-lo apenas pelo nome. Quer continuar?")) return;
     try { await logout(); navigate("/login", { replace: true }); }
     catch { toast({ title: "Não foi possível sair", description: "Tente novamente em instantes.", variant: "destructive" }); }
   };
@@ -26,7 +27,7 @@ export default function Settings() {
         <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <Shield className="h-4 w-4" /> Armazenamento local
         </h3>
-        {profile && <p className="text-sm">Conectado como <strong>{profile.name || profile.email}</strong> · {profile.email}</p>}
+        {profile && <p className="text-sm">Conectado como <strong>{profile.name || profile.email}</strong>{profile.isAnonymous ? " · acesso salvo neste dispositivo" : profile.email ? ` · ${profile.email}` : ""}</p>}
         <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl p-3 text-muted-foreground transition-colors hover:bg-muted">
           <LogOut className="h-5 w-5" /><span className="text-sm font-medium">Sair da conta</span>
         </button>

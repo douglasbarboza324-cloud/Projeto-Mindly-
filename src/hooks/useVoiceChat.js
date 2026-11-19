@@ -98,7 +98,9 @@ export function useVoiceChat({ lang = "pt-BR", onTranscript } = {}) {
     if (!ttsSupported || !text) return;
     try {
       window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
+      const speechText = text.replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}\uFE0F\u200D\u20E3]/gu, " ").replace(/\s{2,}/g, " ").trim();
+      if (!speechText) return;
+      const utter = new SpeechSynthesisUtterance(speechText);
       utter.lang = lang;
       utter.rate = 1;
       utter.pitch = 1;

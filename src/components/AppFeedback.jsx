@@ -3,7 +3,8 @@ import { Star } from "lucide-react";
 import { supabase } from "@/api/profile";
 import { Button } from "@/components/ui/button";
 
-const EMOJIS = [0x1f97a, 0x1f615, 0x1f610, 0x1f60a, 0x1f929];
+// Keep this order aligned with the emoji check constraint in the feedback migration.
+const EMOJIS = [0x1f61e, 0x1f615, 0x1f610, 0x1f60a, 0x1f929];
 
 export default function AppFeedback() {
   const [rating, setRating] = useState(0);

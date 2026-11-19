@@ -21,40 +21,7 @@ export async function getProfile() {
   const client = requireSupabase();
   const { data: { user }, error } = await client.auth.getUser();
   if (error) throw error;
-  return user ? { id: user.id, name: user.user_metadata?.full_name || user.user_metadata?.name || "", email: user.email || "", avatarUrl: user.user_metadata?.avatar_url || "", createdAt: user.created_at } : null;
-}
-
-export async function registerAccount({ name, email, password }) {
-  const client = requireSupabase();
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-    const invalidEmailError = new Error("Informe um endereço de e-mail válido.");
-    invalidEmailError.code = "invalid_email";
-    throw invalidEmailError;
-  }
-  const passwordError = getPasswordValidationMessage(password);
-  if (passwordError) {
-    const weakPasswordError = new Error(passwordError);
-    weakPasswordError.code = "weak_password";
-    throw weakPasswordError;
-  }
-  const { data, error } = await client.auth.signUp({ email: normalizedEmail, password, options: { data: { full_name: name.trim() }, emailRedirectTo: `${window.location.origin}/` } });
-  if (error) throw error;
-  // Supabase intentionally returns an empty identities array for an existing email
-  // when confirmations are enabled, to avoid disclosing account existence via its API.
-  if (data.user?.identities?.length === 0) {
-    const duplicateError = new Error("Já existe uma conta com este e-mail. Entre ou use a recuperação de senha.");
-    duplicateError.code = "duplicate_email";
-    throw duplicateError;
-  }
-  return data;
-}
-
-export function getPasswordValidationMessage(password) {
-  if (password.length < 8) return "A senha deve ter pelo menos 8 caracteres.";
-  if (!/[A-Z]/.test(password)) return "Inclua pelo menos uma letra maiúscula.";
-  if (!/[^A-Za-z0-9]/.test(password)) return "Inclua pelo menos um caractere especial (por exemplo: !, @ ou #).";
-  return "";
+  return user ? { id: user.id, name: user.user_metadata?.full_name || user.user_metadata?.name || "", email: user.email || "", isAnonymous: user.is_anonymous === true, avatarUrl: user.user_metadata?.avatar_url || "", createdAt: user.created_at } : null;
 }
 
 export async function resendSignupConfirmation(email) {
@@ -79,7 +46,6 @@ export function isEmailNotConfirmedError(error) {
 }
 
 export function getAuthErrorMessage(error, context = "generic") {
-  if (context === "register" && error?.code === "duplicate_email") return error.message;
   if (isEmailRateLimitError(error)) {
     return "Muitas solicitações de e-mail foram feitas. Aguarde um pouco antes de tentar novamente.";
   }
@@ -92,15 +58,10 @@ export function getAuthErrorMessage(error, context = "generic") {
   if (context === "login" && (code === "invalid_credentials" || message.includes("invalid login credentials"))) {
     return "E-mail ou senha incorretos. Confira os dados e tente novamente.";
   }
-  if (context === "register" && (code === "weak_password" || message.includes("password"))) {
-    return error?.message || "Use ao menos 8 caracteres, uma letra maiúscula e um caractere especial.";
-  }
-  if (context === "register" && code === "invalid_email") return "Informe um endereço de e-mail válido.";
   if (code.includes("email") && (message.includes("invalid") || message.includes("valid"))) {
     return "Confira o formato do endereço de e-mail.";
   }
   if (context === "login") return "Não foi possível entrar agora. Confira seus dados e tente novamente.";
-  if (context === "register") return "Não foi possível criar sua conta agora. Confira os dados e tente novamente.";
   if (context === "resend") return "Não foi possível enviar o e-mail agora. Tente novamente em instantes.";
   return "Não foi possível concluir a solicitação. Tente novamente mais tarde.";
 }
@@ -108,6 +69,32 @@ export function getAuthErrorMessage(error, context = "generic") {
 export async function loginAccount({ email, password }) {
   const { error } = await requireSupabase().auth.signInWithPassword({ email: email.trim(), password });
   if (error) throw error;
+}
+
+export async function startNameOnlyAccess(name) {
+  const fullName = String(name || "").trim();
+  if (fullName.length < 2 || fullName.length > 80) {
+    const error = new Error("Informe um nome entre 2 e 80 caracteres.");
+    error.code = "invalid_name";
+    throw error;
+  }
+
+  const { data, error } = await requireSupabase().auth.signInAnonymously({
+    options: { data: { full_name: fullName } },
+  });
+  if (error) throw error;
+  if (!data.session) throw new Error("Não foi possível iniciar o acesso.");
+  return data;
+}
+
+export function getNameOnlyAccessErrorMessage(error) {
+  const code = String(error?.code || "").toLowerCase();
+  const message = String(error?.message || "").toLowerCase();
+  if (code === "invalid_name") return error.message;
+  if (code === "anonymous_provider_disabled" || message.includes("anonymous sign-ins are disabled")) {
+    return "O acesso apenas com nome ainda não está habilitado no Supabase. Ative os usuários anônimos nas configurações de autenticação.";
+  }
+  return "Não foi possível iniciar seu acesso agora. Tente novamente em instantes.";
 }
 
 export async function requestPasswordReset(email) {
