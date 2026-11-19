@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, AlertTriangle, FileText, RotateCcw, Mic, MicOff, Volume2, VolumeX, Headphones, X, Copy, Square } from "lucide-react";
+import { Send, Bot, User, AlertTriangle, FileText, RotateCcw, Mic, MicOff, Volume2, VolumeX, Headphones, X, Copy, Square, History, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { localData } from "@/api/localData";
@@ -48,6 +48,14 @@ function getRecentContext(messages) {
   return recent.reverse();
 }
 
+function getUserFacingMessage(message) {
+  if (message.role !== "assistant") return message.content;
+  if (/^(n[aã]o foi poss[ií]vel obter resposta da ia|n[aã]o foi poss[ií]vel conectar [aà] api|a rota \/api\/chat|a api (do mindly|de ia)|o provedor de ia)/i.test(message.content || "")) {
+    return "Não consegui responder naquela tentativa. Você pode tentar novamente.";
+  }
+  return (message.content || "").replace(/\s*Para respostas com IA,[^.]*API[^.]*provedor configurado\.?/i, "");
+}
+
 export default function Triage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -60,6 +68,7 @@ export default function Triage() {
   const [personality, setPersonality] = useState(() => window.localStorage.getItem("mindly:chat-personality") || "natural");
   const [sessions, setSessions] = useState([]);
   const [copiedMessage, setCopiedMessage] = useState(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const scrollRef = useRef(null);
   const chatScrollRef = useRef(null);
   const shouldAutoScrollRef = useRef(true);
@@ -82,19 +91,21 @@ export default function Triage() {
     if (shouldAutoScrollRef.current) scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
-  const startSession = async () => {
+  const startSession = async (persist = true) => {
     abortRef.current?.abort();
     sendingRef.current = false;
     setLoading(false);
     const welcome = {
       role: "assistant",
-      content: "Olá! 💚 Sou o assistente do Mindly. Estou aqui para te ouvir. Como você está se sentindo hoje? Esta conversa fica salva neste navegador. Para respostas com IA, o texto é enviado à API e ao provedor configurado.",
+      content: "Olá! 💚 Sou o assistente do Mindly. Estou aqui para te ouvir. Como você está se sentindo hoje? Esta conversa fica salva neste navegador.",
       timestamp: new Date().toISOString(),
     };
     setMessages([welcome]);
+    setSessionId(null);
     if (autoSpeak) speak(welcome.content);
     setReport(null);
     setShowCrisis(false);
+    if (!persist) return;
     try {
       const session = await localData.triageSessions.create({
         messages: [welcome],
@@ -103,16 +114,40 @@ export default function Triage() {
       });
       setSessionId(session.id);
       refreshSessions();
-    } catch (error) {
-      toast({ title: "Conversa não salva", description: error.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Conversa não salva", description: "Não foi possível salvar esta conversa neste navegador.", variant: "destructive" });
     }
   };
 
   const refreshSessions = () => {
     try {
       setSessions(localData.triageSessions.list("-updated_date", 30));
-    } catch (error) {
-      toast({ title: "Histórico indisponível", description: error.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Histórico indisponível", description: "Não foi possível carregar suas conversas agora.", variant: "destructive" });
+    }
+  };
+
+  const deleteSession = (id) => {
+    if (!window.confirm("Apagar esta conversa? Esta ação não pode ser desfeita.")) return;
+    try {
+      localData.triageSessions.delete(id);
+      setSessions((current) => current.filter((session) => session.id !== id));
+      if (sessionId === id) startSession(false);
+    } catch {
+      toast({ title: "Não foi possível apagar a conversa", description: "Tente novamente em instantes.", variant: "destructive" });
+    }
+  };
+
+  const clearHistory = () => {
+    if (!window.confirm("Apagar todas as conversas? Esta ação não pode ser desfeita.")) return;
+    try {
+      abortRef.current?.abort();
+      localData.triageSessions.clear();
+      setSessions([]);
+      setHistoryOpen(false);
+      startSession(false);
+    } catch {
+      toast({ title: "Não foi possível limpar o histórico", description: "Tente novamente em instantes.", variant: "destructive" });
     }
   };
 
@@ -137,8 +172,8 @@ export default function Triage() {
       try {
         localData.triageSessions.update(sessionId, { personality: value });
         refreshSessions();
-      } catch (error) {
-        toast({ title: "Não foi possível salvar o estilo", description: error.message, variant: "destructive" });
+      } catch {
+        toast({ title: "Não foi possível salvar o estilo", description: "Tente novamente em instantes.", variant: "destructive" });
       }
     }
   };
@@ -159,13 +194,17 @@ export default function Triage() {
     setMessages(newMessages);
     setInput("");
 
-    if (sessionId) {
-      try {
-        localData.triageSessions.update(sessionId, { messages: newMessages, personality });
-        refreshSessions();
-      } catch (error) {
-        toast({ title: "Conversa não salva", description: error.message, variant: "destructive" });
+    let activeSessionId = sessionId;
+    try {
+      if (activeSessionId) localData.triageSessions.update(activeSessionId, { messages: newMessages, personality });
+      else {
+        const session = localData.triageSessions.create({ messages: newMessages, status: "active", personality });
+        activeSessionId = session.id;
+        setSessionId(activeSessionId);
       }
+      refreshSessions();
+    } catch {
+      toast({ title: "Conversa não salva", description: "Não foi possível salvar esta conversa neste navegador.", variant: "destructive" });
     }
 
     if (checkCrisis(userMsg.content)) {
@@ -177,8 +216,8 @@ export default function Triage() {
       };
       const updatedMessages = [...newMessages, crisisMsg];
       setMessages(updatedMessages);
-      if (sessionId) {
-        try { localData.triageSessions.update(sessionId, { messages: updatedMessages }); refreshSessions(); } catch {}
+      if (activeSessionId) {
+        try { localData.triageSessions.update(activeSessionId, { messages: updatedMessages }); refreshSessions(); } catch {}
       }
       if (autoSpeak) speak(crisisMsg.content);
       sendingRef.current = false;
@@ -214,23 +253,23 @@ export default function Triage() {
       const updatedMessages = [...newMessages, assistantMsg];
       setMessages(updatedMessages);
       if (autoSpeak) speak(responseText);
-      if (sessionId) {
+      if (activeSessionId) {
         const updateData = { messages: updatedMessages };
         if (analysis) {
           updateData.detected_signals = analysis.signals || [];
           updateData.risk_level = analysis.risk_level || "baixo";
           updateData.referral_suggestions = analysis.referrals || [];
         }
-        localData.triageSessions.update(sessionId, updateData);
+        localData.triageSessions.update(activeSessionId, updateData);
         refreshSessions();
       }
     } catch (error) {
       if (error.name === "AbortError") return;
-      const errMsg = { role: "assistant", content: `Não foi possível obter resposta da IA: ${error.message}`, timestamp: new Date().toISOString() };
+      const errMsg = { role: "assistant", content: "Não consegui responder agora. Tente novamente em alguns instantes.", timestamp: new Date().toISOString() };
       const updatedMessages = [...newMessages, errMsg];
       setMessages(updatedMessages);
-      if (sessionId) {
-        try { localData.triageSessions.update(sessionId, { messages: updatedMessages }); refreshSessions(); } catch {}
+      if (activeSessionId) {
+        try { localData.triageSessions.update(activeSessionId, { messages: updatedMessages }); refreshSessions(); } catch {}
       }
       if (autoSpeak) speak(errMsg.content);
     } finally {
@@ -282,8 +321,8 @@ export default function Triage() {
           report_summary: result.resumo,
         });
       }
-    } catch (error) {
-      toast({ title: "Provedor de IA indisponível", description: error.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Não foi possível gerar o relatório", description: "Tente novamente em alguns instantes.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -294,7 +333,7 @@ export default function Triage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-heading font-bold">Triagem Inteligente</h2>
-          <p className="text-sm text-muted-foreground">Converse sem julgamentos. As respostas usam o provedor de IA configurado.</p>
+          <p className="text-sm text-muted-foreground">Converse sem julgamentos e compartilhe o que está sentindo.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -303,14 +342,9 @@ export default function Triage() {
               {PERSONALITIES.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </label>
-          {sessions.length > 1 && (
-            <select value={sessionId || ""} onChange={(event) => openSession(event.target.value)} className="min-h-10 max-w-[210px] rounded-xl border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" aria-label="Abrir conversa anterior">
-              {sessions.map((session) => {
-                const firstUserMessage = session.messages?.find((item) => item.role === "user")?.content;
-                return <option key={session.id} value={session.id}>{firstUserMessage?.slice(0, 32) || "Nova conversa"}</option>;
-              })}
-            </select>
-          )}
+          <Button variant="outline" size="sm" onClick={() => setHistoryOpen((open) => !open)} aria-expanded={historyOpen}>
+            <History className="mr-1.5 h-4 w-4" /> Histórico ({sessions.length})
+          </Button>
           {voiceSupported && (
             <Button
               variant={voiceMode ? "default" : "outline"}
@@ -341,6 +375,18 @@ export default function Triage() {
           </Button>
         </div>
       </div>
+
+      {historyOpen && <section className="rounded-2xl border bg-card p-3 sm:p-4" aria-label="Histórico de conversas">
+        <div className="mb-3 flex items-center justify-between gap-3"><h3 className="font-semibold">Suas conversas</h3><Button type="button" variant="outline" size="sm" onClick={clearHistory} disabled={!sessions.length}><Trash2 className="mr-1.5 h-4 w-4" />Limpar histórico</Button></div>
+        {sessions.length ? <ul className="max-h-56 space-y-1 overflow-y-auto">{sessions.map((session) => {
+          const firstUserMessage = session.messages?.find((item) => item.role === "user")?.content;
+          const title = firstUserMessage?.slice(0, 64) || "Nova conversa";
+          return <li key={session.id} className="flex items-center gap-2 rounded-xl border border-transparent hover:border-border">
+            <button type="button" onClick={() => { openSession(session.id); setHistoryOpen(false); }} aria-current={session.id === sessionId ? "true" : undefined} className="min-h-11 min-w-0 flex-1 truncate rounded-lg px-3 text-left text-sm hover:bg-muted" title={title}>{title}</button>
+            <Button type="button" variant="ghost" size="icon" onClick={() => deleteSession(session.id)} aria-label={`Apagar conversa: ${title}`} title="Apagar conversa"><Trash2 className="h-4 w-4" /></Button>
+          </li>;
+        })}</ul> : <p className="py-3 text-sm text-muted-foreground">Nenhuma conversa salva.</p>}
+      </section>}
 
       {/* Crisis alert */}
       {showCrisis && (
@@ -412,6 +458,9 @@ export default function Triage() {
         >
           <AnimatePresence>
             {messages.map((msg, i) => (
+              (() => {
+                const displayedContent = getUserFacingMessage(msg);
+                return (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 10 }}
@@ -430,13 +479,13 @@ export default function Triage() {
                 }`}>
                   {msg.role === "assistant" ? (
                     <div className="chat-markdown max-w-none break-words text-foreground">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown>{displayedContent}</ReactMarkdown>
                     </div>
                   ) : msg.content}
                   {msg.role === "assistant" && ttsSupported && (
                     <button
                       type="button"
-                      onClick={() => isSpeaking ? stopSpeaking() : speak(msg.content)}
+                      onClick={() => isSpeaking ? stopSpeaking() : speak(displayedContent)}
                       aria-label={isSpeaking ? "Parar leitura da resposta" : "Ouvir resposta"}
                       className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
@@ -445,13 +494,15 @@ export default function Triage() {
                     </button>
                   )}
                   {msg.role === "assistant" && (
-                    <button type="button" onClick={() => copyResponse(msg.content, i)} aria-label="Copiar resposta" className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                    <button type="button" onClick={() => copyResponse(displayedContent, i)} aria-label="Copiar resposta" className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                       <Copy className="h-4 w-4" />
                       {copiedMessage === i ? "Copiado" : "Copiar"}
                     </button>
                   )}
                 </div>
               </motion.div>
+                );
+              })()
             ))}
           </AnimatePresence>
           {loading && (
@@ -528,7 +579,7 @@ export default function Triage() {
       </div>
 
       <p className="text-xs text-center text-muted-foreground">
-        Este assistente não fornece diagnósticos. A conversa fica neste navegador; mensagens enviadas à IA são processadas pela API e pelo provedor configurado. Em emergências, ligue 188 (CVV).
+        Este assistente não fornece diagnósticos. A conversa fica salva neste navegador. Em emergências, ligue 188 (CVV).
       </p>
 
       {/* Voice mode overlay */}

@@ -6,7 +6,6 @@ Este pacote contém somente os arquivos alterados e a nova migração de feedbac
 
 - Campo de senha com botão acessível para mostrar/ocultar no login e no cadastro.
 - Campo de e-mail com validação nativa, limite de tamanho e prevenção de capitalização automática.
-- Normalização do telefone brasileiro para E.164 antes de solicitar/verificar SMS.
 - Área inicial convertida em formulário de avaliação do aplicativo, com nota, comentário opcional e confirmação.
 - Exclusão de uma conversa ou de todo o histórico local, sempre com confirmação.
 
@@ -27,7 +26,7 @@ A tabela usa Row Level Security: cada usuário autenticado só pode enviar e con
 
 ## 3. Autenticação
 
-O aplicativo oferece login com e-mail e senha ou telefone com código SMS. Para habilitar telefone, configure um provedor real em **Authentication → Phone** no Supabase. Os códigos são enviados e validados pelo Supabase Auth.
+O aplicativo oferece cadastro, login e recuperação de senha por e-mail com o Supabase Auth. A confirmação de cadastro respeita a política de confirmação de e-mail configurada no Supabase.
 
 ## 4. Testar e publicar
 

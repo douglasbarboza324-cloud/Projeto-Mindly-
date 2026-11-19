@@ -8,12 +8,7 @@ async function readApiResponse(response) {
     try {
       result = JSON.parse(raw);
     } catch {
-      const preview = raw.replace(/\s+/g, " ").trim().slice(0, 180);
-      throw new Error(
-        `A rota /api/chat retornou conteúdo que não é JSON (HTTP ${response.status}). ` +
-        `Isso geralmente indica que a função da Vercel não foi publicada ou retornou uma página de erro. ` +
-        (preview ? `Resposta recebida: ${preview}` : "A resposta veio vazia.")
-      );
+      throw new Error("CHAT_UNAVAILABLE");
     }
   }
 
@@ -49,23 +44,20 @@ export async function generateWithLocalModel({ prompt, messages, responseSchema,
     response = await requestChat(body, signal);
   } catch (error) {
     if (error.name === "AbortError") throw error;
-    if (error.message?.includes("/api/chat")) throw error;
-    throw new Error(
-      "Não foi possível conectar à API do Mindly. Verifique a publicação da função /api/chat na Vercel e tente novamente."
-    );
+    throw new Error("CHAT_UNAVAILABLE");
   }
 
   const result = response.result;
   if (!result) {
-    throw new Error(`A API do Mindly não enviou JSON válido (HTTP ${response.status}).`);
+    throw new Error("CHAT_UNAVAILABLE");
   }
   if (!response.ok) {
-    throw new Error(result.error || `A API de IA não respondeu corretamente (${response.status}).`);
+    throw new Error("CHAT_UNAVAILABLE");
   }
 
   const content = result.message?.content;
   if (typeof content !== "string" || !content.trim()) {
-    throw new Error("O provedor de IA retornou uma resposta vazia ou em formato incompatível.");
+    throw new Error("CHAT_UNAVAILABLE");
   }
 
   if (!responseSchema) return content.trim();
@@ -73,6 +65,6 @@ export async function generateWithLocalModel({ prompt, messages, responseSchema,
   try {
     return JSON.parse(content);
   } catch {
-    throw new Error("O provedor de IA retornou um resultado inválido. Tente novamente.");
+    throw new Error("CHAT_UNAVAILABLE");
   }
 }

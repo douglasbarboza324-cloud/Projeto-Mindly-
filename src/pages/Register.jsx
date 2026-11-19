@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserPlus } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import PasswordField from "@/components/PasswordField";
 import { Button } from "@/components/ui/button";
 import { getAuthErrorMessage, isEmailRateLimitError, registerAccount, resendSignupConfirmation, supabase } from "@/api/profile";
 import { formatCooldown, useAuthEmailCooldown } from "@/hooks/useAuthEmailCooldown";
@@ -46,8 +47,8 @@ export default function Register() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2"><label htmlFor="register-name" className="text-sm font-medium">Nome completo</label><input id="register-name" value={form.name} onChange={update("name")} required minLength={2} maxLength={80} autoComplete="name" placeholder="Seu nome completo" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-base" /></div>
       <div className="space-y-2"><label htmlFor="register-email" className="text-sm font-medium">E-mail</label><input id="register-email" type="email" value={form.email} onChange={update("email")} required maxLength={254} autoComplete="email" placeholder="voce@exemplo.com" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-base" /></div>
-      <div className="space-y-2"><label htmlFor="register-password" className="text-sm font-medium">Senha</label><input id="register-password" type="password" value={form.password} onChange={update("password")} required minLength={8} autoComplete="new-password" placeholder="Mínimo de 8 caracteres" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-base" /></div>
-      <div className="space-y-2"><label htmlFor="register-confirm-password" className="text-sm font-medium">Confirmar senha</label><input id="register-confirm-password" type="password" value={form.confirmPassword} onChange={update("confirmPassword")} required autoComplete="new-password" placeholder="Digite a senha novamente" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-base" /></div>
+      <div className="space-y-2"><label htmlFor="register-password" className="text-sm font-medium">Senha</label><PasswordField id="register-password" label="senha" value={form.password} onChange={update("password")} required minLength={8} autoComplete="new-password" placeholder="Mínimo de 8 caracteres" /></div>
+      <div className="space-y-2"><label htmlFor="register-confirm-password" className="text-sm font-medium">Confirmar senha</label><PasswordField id="register-confirm-password" label="confirmação da senha" value={form.confirmPassword} onChange={update("confirmPassword")} required autoComplete="new-password" placeholder="Digite a senha novamente" /></div>
       <p className="text-xs text-muted-foreground">O Supabase enviará um e-mail para confirmar seu cadastro.</p>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}{status && <p role="status" className="text-sm text-emerald-700">{status}</p>}
       {(canResend || status) && <Button type="button" variant="outline" disabled={resending || secondsLeft > 0 || !form.email.trim()} onClick={handleResend} className="h-11 w-full rounded-xl">{resending ? "Enviando..." : secondsLeft > 0 ? `Reenviar em ${formatCooldown(secondsLeft)}` : "Reenviar e-mail de confirmação"}</Button>}

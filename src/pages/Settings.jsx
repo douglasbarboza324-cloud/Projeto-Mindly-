@@ -12,21 +12,21 @@ export default function Settings() {
 
   const handleLogout = async () => {
     try { await logout(); navigate("/login", { replace: true }); }
-    catch (error) { toast({ title: "Não foi possível sair", description: error.message, variant: "destructive" }); }
+    catch { toast({ title: "Não foi possível sair", description: "Tente novamente em instantes.", variant: "destructive" }); }
   };
 
   return (
     <div className="space-y-6 py-4">
       <div>
         <h2 className="text-2xl font-heading font-bold">Configurações</h2>
-        <p className="text-sm text-muted-foreground">Diário, tarefas e áudios ficam neste navegador. Mensagens enviadas à IA são processadas pelo provedor configurado no servidor.</p>
+        <p className="text-sm text-muted-foreground">Diário, tarefas e áudios ficam neste navegador. Mensagens enviadas ao assistente são processadas por um serviço de inteligência artificial.</p>
       </div>
 
       <div className="space-y-3 rounded-2xl border bg-card p-5">
         <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <Shield className="h-4 w-4" /> Armazenamento local
         </h3>
-        {profile && <p className="text-sm">Conectado como <strong>{profile.name || profile.phone}</strong> · {profile.email}</p>}
+        {profile && <p className="text-sm">Conectado como <strong>{profile.name || profile.email}</strong> · {profile.email}</p>}
         <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl p-3 text-muted-foreground transition-colors hover:bg-muted">
           <LogOut className="h-5 w-5" /><span className="text-sm font-medium">Sair da conta</span>
         </button>

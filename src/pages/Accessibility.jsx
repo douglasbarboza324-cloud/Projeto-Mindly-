@@ -51,8 +51,8 @@ export default function Accessibility() {
         },
       });
       setResult(response);
-    } catch (error) {
-      toast({ title: "Provedor de IA indisponível", description: error.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Não foi possível adaptar o texto", description: "Tente novamente em alguns instantes.", variant: "destructive" });
     } finally {
       setLoading(false);
     }

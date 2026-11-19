@@ -133,6 +133,8 @@ export const localData = {
     list: (sort, limit) => list("triageSessions", sort, limit),
     create: (values) => create("triageSessions", values),
     update: (id, values) => update("triageSessions", id, values),
+    delete: (id) => remove("triageSessions", id),
+    clear: () => clearCollection("triageSessions"),
   },
   consents: {
     list: () => list("consents"),

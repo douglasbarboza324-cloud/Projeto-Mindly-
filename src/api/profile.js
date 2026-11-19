@@ -21,7 +21,7 @@ export async function getProfile() {
   const client = requireSupabase();
   const { data: { user }, error } = await client.auth.getUser();
   if (error) throw error;
-  return user ? { id: user.id, name: user.user_metadata?.full_name || user.user_metadata?.name || "", email: user.email || "", phone: user.phone || "", avatarUrl: user.user_metadata?.avatar_url || "", createdAt: user.created_at } : null;
+  return user ? { id: user.id, name: user.user_metadata?.full_name || user.user_metadata?.name || "", email: user.email || "", avatarUrl: user.user_metadata?.avatar_url || "", createdAt: user.created_at } : null;
 }
 
 export async function registerAccount({ name, email, password }) {
@@ -62,7 +62,7 @@ export function isEmailNotConfirmedError(error) {
 export function getAuthErrorMessage(error, context = "generic") {
   if (context === "register" && error?.code === "duplicate_email") return error.message;
   if (isEmailRateLimitError(error)) {
-    return "O Supabase limitou temporariamente o envio de e-mails. Aguarde o contador antes de tentar novamente; o limite do servidor pode levar mais tempo para liberar.";
+    return "Muitas solicitações de e-mail foram feitas. Aguarde um pouco antes de tentar novamente.";
   }
   if (isEmailNotConfirmedError(error)) {
     return "Seu e-mail ainda não foi confirmado. Abra a mensagem de confirmação ou solicite um novo e-mail abaixo.";
@@ -79,41 +79,14 @@ export function getAuthErrorMessage(error, context = "generic") {
   if (code.includes("email") && (message.includes("invalid") || message.includes("valid"))) {
     return "Confira o formato do endereço de e-mail.";
   }
-  return error?.message || "Não foi possível concluir a solicitação. Tente novamente mais tarde.";
+  if (context === "login") return "Não foi possível entrar agora. Confira seus dados e tente novamente.";
+  if (context === "register") return "Não foi possível criar sua conta agora. Confira os dados e tente novamente.";
+  if (context === "resend") return "Não foi possível enviar o e-mail agora. Tente novamente em instantes.";
+  return "Não foi possível concluir a solicitação. Tente novamente mais tarde.";
 }
 
 export async function loginAccount({ email, password }) {
   const { error } = await requireSupabase().auth.signInWithPassword({ email: email.trim(), password });
-  if (error) throw error;
-}
-
-export function normalizePhoneNumber(phone, countryCode = "+55") {
-  const digits = String(phone || "").replace(/\D/g, "");
-  if (!digits) throw new Error("Informe seu número de telefone.");
-  // Accept a full international number, otherwise prepend the selected country code.
-  const normalized = String(phone).trim().startsWith("+") ? `+${digits}` : `${countryCode}${digits}`;
-  if (!/^\+[1-9]\d{7,14}$/.test(normalized)) throw new Error("Informe um número válido com código do país.");
-  return normalized;
-}
-
-export function getPhoneAuthErrorMessage(error) {
-  const message = String(error?.message || "").toLowerCase();
-  if (message.includes("rate limit") || message.includes("too many") || message.includes("sms_send") || message.includes("over_sms_send_rate_limit")) {
-    return "O limite de envio de SMS foi atingido. Aguarde antes de solicitar outro código.";
-  }
-  if (message.includes("phone") && (message.includes("invalid") || message.includes("valid"))) return "Confira o número e o código do país.";
-  if (message.includes("provider") || message.includes("sms") || message.includes("twilio")) return "Não foi possível enviar o SMS. Verifique se um provedor de SMS está configurado no Supabase e tente novamente mais tarde.";
-  if (message.includes("token") || message.includes("otp") || message.includes("code")) return "Código inválido ou expirado. Confira o SMS ou solicite outro código.";
-  return error?.message || "Não foi possível concluir a autenticação por telefone. Tente novamente.";
-}
-
-export async function sendPhoneCode(phone, countryCode) {
-  const { error } = await requireSupabase().auth.signInWithOtp({ phone: normalizePhoneNumber(phone, countryCode), options: { shouldCreateUser: true } });
-  if (error) throw error;
-}
-
-export async function verifyPhoneCode(phone, token, countryCode) {
-  const { error } = await requireSupabase().auth.verifyOtp({ phone: normalizePhoneNumber(phone, countryCode), token: token.trim(), type: "sms" });
   if (error) throw error;
 }
 

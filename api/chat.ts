@@ -95,7 +95,7 @@ export default async function handler(req: any, res: any) {
 
   if (!apiKey || !model) {
     return res.status(503).json({
-      error: "A IA ainda não está configurada. Configure AI_API_KEY e AI_MODEL no ambiente Production da Vercel."
+      error: "Não foi possível responder agora. Tente novamente em alguns instantes."
     });
   }
 
@@ -115,7 +115,7 @@ export default async function handler(req: any, res: any) {
     }
   } catch {
     return res.status(500).json({
-      error: "Endereço do provedor de IA inválido. Use uma URL HTTPS válida."
+      error: "Não foi possível responder agora. Tente novamente em alguns instantes."
     });
   }
 
@@ -189,11 +189,8 @@ export default async function handler(req: any, res: any) {
         response: result
       });
 
-      const providerMessage =
-        result?.error?.message || result?.message || "Sem detalhes do provedor.";
-
       return res.status(502).json({
-        error: `O provedor de IA recusou a solicitação (${upstream.status}): ${String(providerMessage).slice(0, 240)}`
+        error: "Não foi possível responder agora. Tente novamente em alguns instantes."
       });
     }
 
@@ -219,9 +216,7 @@ export default async function handler(req: any, res: any) {
       error.name === "AbortError" ? 504 : 503
     ).json({
       error:
-        error.name === "AbortError"
-          ? "A resposta demorou demais."
-          : "Não foi possível conectar ao provedor de IA."
+        "Não foi possível responder agora. Tente novamente em alguns instantes."
     });
 
   } finally {

@@ -14,7 +14,7 @@ cp backend/.env.example backend/.env
 
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`. The publishable/anon key is intended for browser use; database access is restricted with RLS. Never put a service-role key in frontend variables.
 
-Apply `supabase/migrations/202611180001_profiles_and_reactions.sql` in the Supabase SQL editor. In Supabase Auth settings, enable email confirmations if desired and configure an SMS provider under **Authentication > Phone**. Add the local and production app redirects (including `/#/` and `/#/reset-password`) to Supabase's redirect allow list. Phone authentication sends real SMS through the provider configured in Supabase; the app does not create or store verification codes.
+Apply `supabase/migrations/202611180001_profiles_and_reactions.sql` in the Supabase SQL editor. In Supabase Auth settings, configure email confirmation to match your account policy. Add the local and production app redirects (including `/#/` and `/#/reset-password`) to Supabase's redirect allow list.
 
 For chat, configure a hosted OpenAI-compatible API. To use it locally, add `AI_API_KEY`, `AI_BASE_URL` (defaults to `https://api.openai.com/v1`) and `AI_MODEL` (defaults to `gpt-4o-mini`) to `backend/.env`, then run:
 

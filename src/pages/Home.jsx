@@ -7,6 +7,7 @@ import { MOODS } from "@/lib/moods";
 import { localData } from "@/api/localData";
 import { toast } from "@/components/ui/use-toast";
 import AppReactions from "@/components/AppReactions";
+import AppFeedback from "@/components/AppFeedback";
 
 const modules = [
   { path: "/diario", icon: BookHeart, title: "Diário de Humor", description: "Registre como você está e receba insights sobre seus padrões emocionais.", color: "bg-amber-100 text-amber-600" },
@@ -247,6 +248,7 @@ export default function Home() {
       </div>
 
       <AppReactions contentId="home" />
+      <AppFeedback />
 
       {/* Disclaimer */}
       <div className="text-center py-4">
