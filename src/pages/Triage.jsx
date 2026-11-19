@@ -56,6 +56,26 @@ function getUserFacingMessage(message) {
   return (message.content || "").replace(/\s*Para respostas com IA,[^.]*API[^.]*provedor configurado\.?/i, "");
 }
 
+function normalizeReport(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid report");
+  const resumo = typeof value.resumo === "string" ? value.resumo.trim() : "";
+  if (!resumo) throw new Error("Missing report summary");
+  const toStringList = (items) => Array.isArray(items)
+    ? items.filter((item) => typeof item === "string").map((item) => item.trim()).filter(Boolean).slice(0, 8)
+    : [];
+  const acceptedLevels = ["baixo", "moderado", "alto", "critico"];
+  const nivel = typeof value.nivel_atencao === "string" ? value.nivel_atencao.trim().toLowerCase() : "";
+  return {
+    resumo,
+    sinais_observados: toStringList(value.sinais_observados),
+    nivel_atencao: acceptedLevels.includes(nivel) ? nivel : "",
+    sugestoes: toStringList(value.sugestoes),
+    disclaimer: typeof value.disclaimer === "string" && value.disclaimer.trim()
+      ? value.disclaimer.trim()
+      : "Este relatório não constitui diagnóstico médico. Consulte um profissional de saúde.",
+  };
+}
+
 export default function Triage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -161,7 +181,7 @@ export default function Triage() {
     setMessages(session.messages);
     setPersonality(session.personality || "natural");
     window.localStorage.setItem("mindly:chat-personality", session.personality || "natural");
-    setReport(null);
+    setReport(session.report || (session.report_summary ? normalizeReport({ resumo: session.report_summary }) : null));
     setShowCrisis(session.messages.some((item) => item.role === "user" && checkCrisis(item.content)));
   };
 
@@ -292,6 +312,7 @@ export default function Triage() {
     }
   };
   const generateReport = async () => {
+    if (loading || !messages.some((message) => message.role === "user")) return;
     setLoading(true);
     try {
       const reportMessages = getRecentContext(messages);
@@ -299,27 +320,36 @@ export default function Triage() {
         messages: [
           {
             role: "system",
-            content: "Analise esta conversa de triagem de saúde mental e gere um relatório simples em português brasileiro. Não forneça diagnóstico; resuma os pontos principais, sinais observados e sugestões de encaminhamento.",
+            content: "Analise a conversa de triagem de saúde mental e retorne somente um objeto JSON válido com os campos resumo (string), sinais_observados (lista de strings), nivel_atencao (baixo, moderado, alto ou critico), sugestoes (lista de strings) e disclaimer (string). Use português brasileiro. Resuma apenas o que aparece na conversa, não invente informações e não forneça diagnóstico médico. Se não houver sinais ou sugestões, use listas vazias.",
           },
           ...reportMessages.map(({ role, content }) => ({ role, content })),
         ],
         responseSchema: {
           type: "object",
+          additionalProperties: false,
+          required: ["resumo", "sinais_observados", "nivel_atencao", "sugestoes", "disclaimer"],
           properties: {
             resumo: { type: "string" },
             sinais_observados: { type: "array", items: { type: "string" } },
-            nivel_atencao: { type: "string" },
+            nivel_atencao: { type: "string", enum: ["baixo", "moderado", "alto", "critico"] },
             sugestoes: { type: "array", items: { type: "string" } },
             disclaimer: { type: "string" },
           },
         },
       });
-      setReport(result);
+      const normalizedReport = normalizeReport(result);
+      setReport(normalizedReport);
       if (sessionId) {
-        await localData.triageSessions.update(sessionId, {
-          status: "completed",
-          report_summary: result.resumo,
-        });
+        try {
+          localData.triageSessions.update(sessionId, {
+            status: "completed",
+            report: normalizedReport,
+            report_summary: normalizedReport.resumo,
+          });
+          refreshSessions();
+        } catch {
+          toast({ title: "Relatório gerado", description: "O relatório está pronto, mas não foi possível salvá-lo no histórico.", variant: "destructive" });
+        }
       }
     } catch {
       toast({ title: "Não foi possível gerar o relatório", description: "Tente novamente em alguns instantes.", variant: "destructive" });
@@ -363,7 +393,7 @@ export default function Triage() {
               {voiceMode ? "Sair da voz" : "Modo voz"}
             </Button>
           )}
-          {messages.length > 3 && (
+          {messages.some((message) => message.role === "user") && (
             <Button variant="outline" size="sm" onClick={generateReport} disabled={loading}>
               <FileText className="w-4 h-4 mr-1.5" />
               Relatório
@@ -413,6 +443,7 @@ export default function Triage() {
             Relatório da Conversa
           </h3>
           <p className="text-sm text-muted-foreground">{report.resumo}</p>
+          {report.nivel_atencao && <p className="text-xs"><span className="font-medium text-muted-foreground">Nível de atenção: </span><span className="capitalize">{report.nivel_atencao}</span></p>}
           {report.sinais_observados?.length > 0 && (
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Sinais observados:</p>
