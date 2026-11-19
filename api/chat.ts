@@ -85,7 +85,7 @@ export default async function handler(req: any, res: any) {
   }
 
   const apiKey = process.env.AI_API_KEY;
-  const model = process.env.AI_MODEL || "glm-5.3-flash:cloud";
+  const model = "glm-5.3-flash:cloud";
 
   const baseUrl = (
     process.env.AI_BASE_URL || "https://ollama.com/v1"
