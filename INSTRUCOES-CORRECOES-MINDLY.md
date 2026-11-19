@@ -26,7 +26,7 @@ A tabela usa Row Level Security: cada usuário autenticado só pode enviar e con
 
 ## 3. Autenticação
 
-O Mindly permite entrar apenas com o nome usando usuários anônimos do Supabase e mantém o login por e-mail para contas existentes. Ative **Authentication → Sign In / Providers → Allow anonymous sign-ins** no painel do Supabase. O acesso por nome fica vinculado ao dispositivo e não pode ser recuperado depois de sair ou limpar os dados do navegador; considere ativar CAPTCHA para proteger a criação de usuários anônimos.
+O Mindly permite entrar apenas com o nome usando usuários anônimos do Supabase. Ative **Authentication → Sign In / Providers → Allow anonymous sign-ins** no painel do Supabase. O acesso por nome fica vinculado ao dispositivo e não pode ser recuperado depois de sair ou limpar os dados do navegador; considere ativar CAPTCHA para proteger a criação de usuários anônimos. Para salvar avaliações, aplique também `supabase/migrations/202611190001_feedback.sql`.
 
 ## 4. Testar e publicar
 

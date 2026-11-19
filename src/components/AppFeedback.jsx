@@ -20,14 +20,15 @@ export default function AppFeedback() {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw userError || new Error("Sessão indisponível");
-      const { error: insertError } = await supabase.from("feedback").insert({
+      const { data: savedFeedback, error: insertError } = await supabase.from("feedback").insert({
         user_id: user.id,
         content_id: "mindly-app-review",
         rating,
         emoji: String.fromCodePoint(EMOJIS[rating - 1]),
         comment: comment.trim() || null,
-      });
+      }).select("id").single();
       if (insertError) throw insertError;
+      if (!savedFeedback?.id) throw new Error("O registro não foi confirmado.");
       setStatus("Obrigado por avaliar o Mindly. Sua avaliação foi enviada.");
       setRating(0); setComment("");
     } catch {

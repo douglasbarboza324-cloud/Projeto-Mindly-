@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { MOODS } from "@/lib/moods";
 import { localData } from "@/api/localData";
 import { toast } from "@/components/ui/use-toast";
-import AppReactions from "@/components/AppReactions";
 import AppFeedback from "@/components/AppFeedback";
 
 const modules = [
@@ -247,7 +246,6 @@ export default function Home() {
         ))}
       </div>
 
-      <AppReactions contentId="home" />
       <AppFeedback />
 
       {/* Disclaimer */}
