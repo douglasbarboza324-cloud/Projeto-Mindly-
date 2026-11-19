@@ -26,8 +26,15 @@ export async function getProfile() {
 
 export async function registerAccount({ name, email, password }) {
   const client = requireSupabase();
-  const { data, error } = await client.auth.signUp({ email: email.trim(), password, options: { data: { full_name: name.trim() }, emailRedirectTo: `${window.location.origin}/` } });
+  const { data, error } = await client.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { full_name: name.trim() }, emailRedirectTo: `${window.location.origin}/` } });
   if (error) throw error;
+  // Supabase intentionally returns an empty identities array for an existing email
+  // when confirmations are enabled, to avoid disclosing account existence via its API.
+  if (data.user?.identities?.length === 0) {
+    const duplicateError = new Error("Já existe uma conta com este e-mail. Entre ou use a recuperação de senha.");
+    duplicateError.code = "duplicate_email";
+    throw duplicateError;
+  }
   return data;
 }
 
@@ -53,6 +60,7 @@ export function isEmailNotConfirmedError(error) {
 }
 
 export function getAuthErrorMessage(error, context = "generic") {
+  if (context === "register" && error?.code === "duplicate_email") return error.message;
   if (isEmailRateLimitError(error)) {
     return "O Supabase limitou temporariamente o envio de e-mails. Aguarde o contador antes de tentar novamente; o limite do servidor pode levar mais tempo para liberar.";
   }
@@ -79,18 +87,33 @@ export async function loginAccount({ email, password }) {
   if (error) throw error;
 }
 
-export async function signInOAuth(provider) {
-  const { error } = await requireSupabase().auth.signInWithOAuth({ provider, options: { redirectTo: `${window.location.origin}/` } });
+export function normalizePhoneNumber(phone, countryCode = "+55") {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (!digits) throw new Error("Informe seu número de telefone.");
+  // Accept a full international number, otherwise prepend the selected country code.
+  const normalized = String(phone).trim().startsWith("+") ? `+${digits}` : `${countryCode}${digits}`;
+  if (!/^\+[1-9]\d{7,14}$/.test(normalized)) throw new Error("Informe um número válido com código do país.");
+  return normalized;
+}
+
+export function getPhoneAuthErrorMessage(error) {
+  const message = String(error?.message || "").toLowerCase();
+  if (message.includes("rate limit") || message.includes("too many") || message.includes("sms_send") || message.includes("over_sms_send_rate_limit")) {
+    return "O limite de envio de SMS foi atingido. Aguarde antes de solicitar outro código.";
+  }
+  if (message.includes("phone") && (message.includes("invalid") || message.includes("valid"))) return "Confira o número e o código do país.";
+  if (message.includes("provider") || message.includes("sms") || message.includes("twilio")) return "Não foi possível enviar o SMS. Verifique se um provedor de SMS está configurado no Supabase e tente novamente mais tarde.";
+  if (message.includes("token") || message.includes("otp") || message.includes("code")) return "Código inválido ou expirado. Confira o SMS ou solicite outro código.";
+  return error?.message || "Não foi possível concluir a autenticação por telefone. Tente novamente.";
+}
+
+export async function sendPhoneCode(phone, countryCode) {
+  const { error } = await requireSupabase().auth.signInWithOtp({ phone: normalizePhoneNumber(phone, countryCode), options: { shouldCreateUser: true } });
   if (error) throw error;
 }
 
-export async function sendPhoneCode(phone) {
-  const { error } = await requireSupabase().auth.signInWithOtp({ phone: phone.trim() });
-  if (error) throw error;
-}
-
-export async function verifyPhoneCode(phone, token) {
-  const { error } = await requireSupabase().auth.verifyOtp({ phone: phone.trim(), token: token.trim(), type: "sms" });
+export async function verifyPhoneCode(phone, token, countryCode) {
+  const { error } = await requireSupabase().auth.verifyOtp({ phone: normalizePhoneNumber(phone, countryCode), token: token.trim(), type: "sms" });
   if (error) throw error;
 }
 

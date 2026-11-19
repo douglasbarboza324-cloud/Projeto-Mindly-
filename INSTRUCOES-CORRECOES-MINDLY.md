@@ -25,9 +25,9 @@ A nova avaliação usa a tabela `public.feedback`. Para ativá-la:
 
 A tabela usa Row Level Security: cada usuário autenticado só pode enviar e consultar seus próprios registros. O comentário é opcional e limitado a 1.000 caracteres.
 
-## 3. Google e Facebook
+## 3. Autenticação
 
-Os botões de login social já existiam no código e continuam usando Supabase Auth. Para que funcionem, habilite cada provedor em **Authentication → Sign In / Providers** no Supabase e informe o Client ID/Secret fornecidos pelo Google e pelo Facebook. Configure também a URL de callback indicada pelo próprio Supabase no painel de cada provedor. O código do aplicativo não consegue criar essas credenciais por conta própria.
+O aplicativo oferece login com e-mail e senha ou telefone com código SMS. Para habilitar telefone, configure um provedor real em **Authentication → Phone** no Supabase. Os códigos são enviados e validados pelo Supabase Auth.
 
 ## 4. Testar e publicar
 
