@@ -119,14 +119,10 @@ export default function MoodDiary() {
         toast({ title: "Transcrição não suportada", description: "O áudio será salvo e você pode escrever o relato manualmente." });
       }
 
-      // Detect best supported MIME type for cross-browser/Android compatibility
-      const mimeType = typeof MediaRecorder.isTypeSupported === "function" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : typeof MediaRecorder.isTypeSupported === "function" && MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : typeof MediaRecorder.isTypeSupported === "function" && MediaRecorder.isTypeSupported("audio/mp4")
-        ? "audio/mp4"
-        : "";
+      // Browsers on phones (especially Safari) support different recording
+      // containers. Pick only a format the browser says it can encode.
+      const mimeType = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg"]
+        .find((type) => typeof MediaRecorder.isTypeSupported !== "function" || MediaRecorder.isTypeSupported(type)) || "";
 
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       const chunks = [];
@@ -151,7 +147,9 @@ export default function MoodDiary() {
         streamRef.current = null;
       };
 
-      recorder.start(1000);
+      // Avoid periodic chunks: mobile Safari may emit fragments that its own
+      // audio element cannot decode reliably. The complete blob is emitted on stop.
+      recorder.start();
       mediaRecorderRef.current = recorder;
       recordStartRef.current = Date.now();
       setRecording(true);
