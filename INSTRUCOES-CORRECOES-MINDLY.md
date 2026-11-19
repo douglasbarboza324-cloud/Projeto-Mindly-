@@ -26,7 +26,7 @@ A tabela usa Row Level Security: cada usuário autenticado só pode enviar e con
 
 ## 3. Autenticação
 
-O aplicativo oferece cadastro, login e recuperação de senha por e-mail com o Supabase Auth. A confirmação de cadastro respeita a política de confirmação de e-mail configurada no Supabase.
+O aplicativo oferece cadastro, login e recuperação de senha por e-mail com o Supabase Auth. Para exigir a verificação do endereço antes do login, ative **Authentication → Sign In / Providers → Email → Confirm email** no painel do Supabase.
 
 ## 4. Testar e publicar
 

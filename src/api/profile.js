@@ -26,7 +26,19 @@ export async function getProfile() {
 
 export async function registerAccount({ name, email, password }) {
   const client = requireSupabase();
-  const { data, error } = await client.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { full_name: name.trim() }, emailRedirectTo: `${window.location.origin}/` } });
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    const invalidEmailError = new Error("Informe um endereço de e-mail válido.");
+    invalidEmailError.code = "invalid_email";
+    throw invalidEmailError;
+  }
+  const passwordError = getPasswordValidationMessage(password);
+  if (passwordError) {
+    const weakPasswordError = new Error(passwordError);
+    weakPasswordError.code = "weak_password";
+    throw weakPasswordError;
+  }
+  const { data, error } = await client.auth.signUp({ email: normalizedEmail, password, options: { data: { full_name: name.trim() }, emailRedirectTo: `${window.location.origin}/` } });
   if (error) throw error;
   // Supabase intentionally returns an empty identities array for an existing email
   // when confirmations are enabled, to avoid disclosing account existence via its API.
@@ -36,6 +48,13 @@ export async function registerAccount({ name, email, password }) {
     throw duplicateError;
   }
   return data;
+}
+
+export function getPasswordValidationMessage(password) {
+  if (password.length < 8) return "A senha deve ter pelo menos 8 caracteres.";
+  if (!/[A-Z]/.test(password)) return "Inclua pelo menos uma letra maiúscula.";
+  if (!/[^A-Za-z0-9]/.test(password)) return "Inclua pelo menos um caractere especial (por exemplo: !, @ ou #).";
+  return "";
 }
 
 export async function resendSignupConfirmation(email) {
@@ -74,8 +93,9 @@ export function getAuthErrorMessage(error, context = "generic") {
     return "E-mail ou senha incorretos. Confira os dados e tente novamente.";
   }
   if (context === "register" && (code === "weak_password" || message.includes("password"))) {
-    return "A senha não atende aos requisitos. Escolha uma senha mais forte e tente novamente.";
+    return error?.message || "Use ao menos 8 caracteres, uma letra maiúscula e um caractere especial.";
   }
+  if (context === "register" && code === "invalid_email") return "Informe um endereço de e-mail válido.";
   if (code.includes("email") && (message.includes("invalid") || message.includes("valid"))) {
     return "Confira o formato do endereço de e-mail.";
   }
