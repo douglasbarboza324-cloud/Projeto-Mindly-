@@ -84,16 +84,18 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  const apiKey = process.env.AI_API_KEY;
-  const model = "glm-5.3-flash:cloud";
+  const apiKey = process.env.AI_API_KEY?.trim();
+  const model = process.env.AI_MODEL?.trim();
 
+  // A rota aceita qualquer provedor que implemente o formato OpenAI Chat Completions.
+  // A URL e o modelo ficam configuráveis no servidor, nunca no navegador.
   const baseUrl = (
-    process.env.AI_BASE_URL || "https://ollama.com/v1"
-  ).replace(/\/+$/, "");
+    process.env.AI_BASE_URL || "https://api.openai.com/v1"
+  ).trim().replace(/\/+$/, "");
 
   if (!apiKey || !model) {
-    return res.status(500).json({
-      error: "Configure AI_API_KEY e AI_MODEL na Vercel."
+    return res.status(503).json({
+      error: "A IA ainda não está configurada. Configure AI_API_KEY e AI_MODEL no ambiente Production da Vercel."
     });
   }
 
@@ -113,7 +115,7 @@ export default async function handler(req: any, res: any) {
     }
   } catch {
     return res.status(500).json({
-      error: "Endereço do Ollama inválido."
+      error: "Endereço do provedor de IA inválido. Use uma URL HTTPS válida."
     });
   }
 
@@ -182,26 +184,24 @@ export default async function handler(req: any, res: any) {
     const result = await upstream.json().catch(() => null);
 
     if (!upstream.ok) {
-  console.error("ERRO OLLAMA:", {
-    status: upstream.status,
-    response: result
-  });
+      console.error("ERRO PROVEDOR DE IA:", {
+        status: upstream.status,
+        response: result
+      });
 
-  return res.status(502).json({
-    error: "Falha no provedor de IA.",
-    providerStatus: upstream.status,
-    providerMessage:
-      result?.error?.message ||
-      result?.message ||
-      "O provedor não informou o motivo."
-  });
-}
+      const providerMessage =
+        result?.error?.message || result?.message || "Sem detalhes do provedor.";
+
+      return res.status(502).json({
+        error: `O provedor de IA recusou a solicitação (${upstream.status}): ${String(providerMessage).slice(0, 240)}`
+      });
+    }
 
     const content =
       result?.choices?.[0]?.message?.content;
 
     if (typeof content !== "string" || !content.trim()) {
-      console.error("Resposta inválida:", result);
+      console.error("Resposta inválida do provedor de IA:", result);
 
       return res.status(502).json({
         error: "A IA retornou uma resposta vazia ou inválida."
@@ -221,7 +221,7 @@ export default async function handler(req: any, res: any) {
       error:
         error.name === "AbortError"
           ? "A resposta demorou demais."
-          : "Não foi possível conectar ao Ollama."
+          : "Não foi possível conectar ao provedor de IA."
     });
 
   } finally {

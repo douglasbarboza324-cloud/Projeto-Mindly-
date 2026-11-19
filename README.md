@@ -48,3 +48,16 @@ npm run lint
 npm run typecheck
 npm run build
 ```
+
+## Configuração da IA hospedada (Vercel)
+
+A rota `api/chat.ts` usa o formato OpenAI Chat Completions e aceita provedores compatíveis. Configure no ambiente **Production** da Vercel:
+
+- `AI_API_KEY`: chave privada fornecida pelo serviço de IA.
+- `AI_BASE_URL`: URL HTTPS base do endpoint compatível, terminando normalmente em `/v1` (ex.: `https://api.exemplo.com/v1`).
+- `AI_MODEL`: identificador exato de um modelo habilitado na conta do provedor.
+
+Não use prefixo `VITE_` nessas variáveis. Não coloque chaves em arquivos do frontend, no GitHub ou em mensagens. Depois de alterar variáveis, faça um novo deployment para que elas entrem em vigor.
+
+O projeto não inclui uma chave nem uma cota de IA. A resposta real depende de uma conta/provedor autorizado, de uma chave válida, de um modelo disponível e dos limites do serviço. A aplicação não inventa respostas quando o provedor está indisponível: ela retorna uma mensagem de erro clara.
+
