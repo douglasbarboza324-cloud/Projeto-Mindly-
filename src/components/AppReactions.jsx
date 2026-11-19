@@ -52,7 +52,7 @@ export default function AppReactions({ contentId = "home" }) {
   }
 
   return <section className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6" aria-label="Reação ao Mindly">
-    <h2 className="text-xl font-heading font-bold">Como você está se sentindo?</h2>
+    <h2 className="text-xl font-heading font-bold">Sua reação ao Mindly</h2>
     <p className="mt-1 text-sm text-muted-foreground">Escolha uma reação. Você pode alterá-la quando quiser.</p>
     <div className="mt-4 flex flex-wrap gap-3" role="group" aria-label="Escolher reação">
       {reactions.map((emoji) => <button key={emoji} type="button" disabled={saving || !supabase} onClick={() => choose(emoji)} aria-label={`Reagir com ${emoji}`} aria-pressed={selected === emoji}
