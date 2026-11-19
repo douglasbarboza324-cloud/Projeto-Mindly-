@@ -1,6 +1,6 @@
 # Mindly
 
-Mindly is a React 18 + Vite application. Diary entries, tasks and recordings remain in the browser. Accounts and emoji reactions use Supabase. Chat uses an OpenAI-compatible hosted provider in production; local development can use the same provider or the existing Ollama backend.
+Mindly is a React 18 + Vite application. Diary entries, tasks and recordings remain in the browser. Name-only access uses Supabase Auth. Chat uses an OpenAI-compatible hosted provider in production; local development can use the same provider or the existing Ollama backend.
 
 ## Setup
 
@@ -14,7 +14,7 @@ cp backend/.env.example backend/.env
 
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`. The publishable/anon key is intended for browser use; database access is restricted with RLS. Never put a service-role key in frontend variables.
 
-Apply `supabase/migrations/202611180001_profiles_and_reactions.sql` and `supabase/migrations/202611190001_feedback.sql` in the Supabase SQL editor. In Supabase Auth settings, enable anonymous sign-ins to let users enter with only a name. Add the local and production app redirects (including `/#/` and `/#/reset-password`) to the redirect allow list. Name-only access is an anonymous Supabase account saved on that device; signing out or clearing browser data loses access to that identity. Supabase recommends CAPTCHA protection for anonymous sign-ins.
+Apply `supabase/migrations/202611180001_profiles_and_reactions.sql` in the Supabase SQL editor. In Supabase Auth settings, enable anonymous sign-ins to let users enter with only a name. Add the local and production app redirects (including `/#/` and `/#/reset-password`) to the redirect allow list. Name-only access is an anonymous Supabase account saved on that device; signing out or clearing browser data loses access to that identity. Supabase recommends CAPTCHA protection for anonymous sign-ins.
 
 For chat, configure a hosted OpenAI-compatible API. To use it locally, add `AI_API_KEY`, `AI_BASE_URL` (defaults to `https://api.openai.com/v1`) and `AI_MODEL` (defaults to `gpt-4o-mini`) to `backend/.env`, then run:
 
