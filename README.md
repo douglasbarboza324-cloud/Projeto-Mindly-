@@ -1,4 +1,85 @@
+# 🧠 Mindly — Bem-estar e Autoconhecimento
+
+O **Mindly** é um projeto pessoal de desenvolvimento web idealizado para explorar novas possibilidades de interação digital voltadas ao bem-estar e ao autoconhecimento.
+
+A proposta é oferecer uma experiência simples, intuitiva e acolhedora, incentivando as pessoas a dedicarem momentos à reflexão pessoal por meio de uma plataforma digital interativa.
+
+🌐 **Acesse o projeto:** https://projeto-mindly.vercel.app/
+
+---
+
+## 🎯 O Problema
+
+Na rotina cotidiana, muitas pessoas encontram dificuldades para reservar momentos de reflexão, organizar seus pensamentos e desenvolver o autoconhecimento.
+
+Além disso, experiências digitais relacionadas ao bem-estar nem sempre oferecem uma interação simples, acessível e acolhedora.
+
+O Mindly busca explorar uma alternativa a esse cenário, aproximando tecnologia e bem-estar por meio de uma experiência digital intuitiva.
+
+## 💡 A Solução
+
+O Mindly propõe uma plataforma digital que coloca a experiência do usuário no centro do desenvolvimento.
+
+A aplicação busca proporcionar:
+
+- Uma interface intuitiva e de fácil utilização.
+- Uma experiência visual acolhedora.
+- Interação por voz.
+- Acesso por diferentes dispositivos.
+- Uma proposta centrada no bem-estar e no autoconhecimento.
+
+## 👥 Público-alvo
+
+O projeto é direcionado a:
+
+- Pessoas interessadas em autoconhecimento.
+- Jovens e adultos interessados em bem-estar emocional.
+- Pessoas que desejam desenvolver momentos de reflexão pessoal.
+- Usuários que valorizam experiências digitais simples e interativas.
+
+## ✨ Principais características
+
+- Interface desenvolvida com foco na experiência do usuário.
+- Identidade visual própria.
+- Recursos de interação por voz.
+- Experiência adaptada a diferentes tamanhos de tela.
+- Publicação e disponibilização online.
+
+## 🛠️ Desenvolvimento
+
+O Mindly foi desenvolvido como um projeto pessoal, utilizando ferramentas de desenvolvimento e inteligência artificial como apoio durante o processo de criação.
+
+A construção envolveu experimentação, testes, identificação de problemas e aprimoramentos na experiência de utilização.
+
+**Ferramentas e tecnologias:** 
+- Inteligência Artificial como apoio ao desenvolvimento.
+- GitHub para versionamento e compartilhamento do projeto.
+- Vercel para publicação da aplicação.
+
+*[Completar esta seção com as tecnologias e ferramentas específicas utilizadas no código.]*
+
+## 🌱 Origem do projeto
+
+O Mindly nasceu a partir de uma experiência de desenvolvimento iniciada em um projeto realizado no contexto da **Squadra Digital**, em parceria com a **Gerando Falcões**.
+
+A experiência despertou o interesse em continuar explorando o desenvolvimento de soluções digitais, dando origem à evolução da ideia em um projeto pessoal.
+
+## 🚀 Objetivo
+
+Mais do que desenvolver uma aplicação web, o Mindly representa uma oportunidade de aprendizado prático, experimentação tecnológica e desenvolvimento de soluções com propósito.
+
+O projeto continua sendo uma jornada de evolução, com foco em aprimorar funcionalidades, acessibilidade e experiência do usuário.
+
+---
+
+**Desenvolvido como projeto pessoal.**
+
+
+
+
+
 # Mindly
+
 
 Mindly is a React 18 + Vite application. Diary entries, tasks and recordings remain in the browser. Name-only access uses Supabase Auth. Chat uses an OpenAI-compatible hosted provider in production; local development can use the same provider or the existing Ollama backend.
 
