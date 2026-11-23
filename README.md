@@ -56,7 +56,34 @@ A construção envolveu experimentação, testes, identificação de problemas e
 - GitHub para versionamento e compartilhamento do projeto.
 - Vercel para publicação da aplicação.
 
-*[Completar esta seção com as tecnologias e ferramentas específicas utilizadas no código.]*
+O desenvolvimento do Mindly envolveu diferentes tecnologias e ferramentas:
+
+**Frontend**
+- React
+- JavaScript
+- HTML5
+- CSS3
+- Tailwind CSS
+- Vite
+
+**Inteligência Artificial e interação**
+- Ollama
+- OpenAI API
+- Web Speech API
+
+**Backend e serviços**
+- Node.js
+- Supabase (integração configurada)
+
+**Desenvolvimento e publicação**
+- Visual Studio Code
+- Git
+- GitHub
+- Vercel
+- Codex
+- Claude
+
+A inteligência artificial também foi utilizada como ferramenta de apoio durante o processo de desenvolvimento, auxiliando na implementação, experimentação e aprimoramento da aplicação.
 
 ## 🌱 Origem do projeto
 
@@ -73,8 +100,6 @@ O projeto continua sendo uma jornada de evolução, com foco em aprimorar funcio
 ---
 
 **Desenvolvido como projeto pessoal.**
-
-
 
 
 
